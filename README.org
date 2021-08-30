@@ -1,0 +1,6 @@
+Install libevdev if you have not already.
+
+Compile with
+#+begin_src
+gcc `pkg-config --cflags libevdev` `pkg-config --libs libevdev` xarabiner.c
+#+end_src
