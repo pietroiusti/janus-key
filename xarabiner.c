@@ -26,12 +26,15 @@
 
 #include <unistd.h>
 #include <time.h>
+#include <stdlib.h>
 
 // Config vars
 unsigned int mod1 = KEY_CAPSLOCK;
 unsigned int mod1_secondary_function = KEY_LEFTMETA;
+//unsigned int mod1_secondary_function = KEY_LEFTCTRL;
 unsigned int mod2 = KEY_ENTER;
 unsigned int mod2_secondary_function = KEY_RIGHTMETA;
+//unsigned int mod2_secondary_function = KEY_RIGHTCTRL;
 float max_delay = 0.3;
     
 // Flags
@@ -45,6 +48,23 @@ long int mod2_last_time_down = 0;
 
 // Hold current time when needed
 long int now;
+
+// Post the EV_KEY event of code `code` and `value` through the
+// uninput device `*uinput_dev` and send a (EV_SYN, SYN_REPORT, 0)
+// event through that same device.
+static int send_key_ev_and_sync(const struct libevdev_uinput *uinput_dev, unsigned int code, int value)
+{
+    int err;
+
+    err = libevdev_uinput_write_event(uinput_dev, EV_KEY, code, value);
+    if (err != 0)
+	return err;
+    err = libevdev_uinput_write_event(uinput_dev, EV_SYN, SYN_REPORT, 0);
+    if (err != 0)
+	return err;
+    
+    return 0;
+}
 
 static void
 print_abs_bits(struct libevdev *dev, int axis)
@@ -212,100 +232,37 @@ main(int argc, char **argv)
 	    printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
 	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
 	    //print_event(&ev);
-
-	
 	    if (ev.type == EV_KEY) { // if type is EV_KEY
 		if (ev.code == mod1) {
 		    if (ev.value == 1) {
 			mod1_down_or_held = 1;
-			printf("mod1_down_or_held = 1\n");
 			last_input_was_special_combination = 0;
-			printf("last_input_was_special_combination = 0\n");
 			time(&mod1_last_time_down);
-			printf("time(&mod1_last_time_down)\n");
 		    } else if (ev.value == 2) {
 			mod1_down_or_held = 1;
-			printf("mod1_down_or_held = 1\n");
 			last_input_was_special_combination = 0;
-			printf("last_input_was_special_combination = 0\n");
 		    } else {
 			mod1_down_or_held = 0;
-			printf("mod1_down_or_held = 0\n");
 			time(&now);
 			if (mod2_down_or_held) {
 			    if (difftime(now, mod1_last_time_down) < max_delay) {
 				last_input_was_special_combination = 1;
-				printf("last_input_was_special_combination = 1\n");
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod2_secondary_function, 1);
-				printf("mod2_secondary_function DOWN\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod1, 1);
-				printf("mod1 DOWN\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod1, 0);
-				printf("mod1 UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod2_secondary_function, 0);
-				printf("mod2_secondary_function UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;				
+				send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
+				send_key_ev_and_sync(uidev, mod1, 1);
+				send_key_ev_and_sync(uidev, mod1, 0);
+				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    } else { // Avoid ``locking'' mod1's secondary function down
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod1_secondary_function, 0);
-				printf("mod1_secondary_function UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
+				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    }
 			} else {
 			    if (last_input_was_special_combination) {
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod1_secondary_function, 0);
-				printf("mod1_secondary_function UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
+				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    } else {
 				if (difftime(now, mod1_last_time_down) < max_delay) {
-				    err = libevdev_uinput_write_event(uidev, EV_KEY, mod1, 1);
-				    printf("mod1 DOWN\n");
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_KEY, mod1, 0);
-				    printf("mod1 UP\n");
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				    if (err != 0)
-					return err;
+				    send_key_ev_and_sync(uidev, mod1, 1);
+				    send_key_ev_and_sync(uidev, mod1, 0);
 				} else { // Avoid ``locking'' mod1's secondary function down
-				    err = libevdev_uinput_write_event(uidev, EV_KEY, mod1_secondary_function, 0);
-				    printf("mod1_secondary_function UP\n");
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				    if (err != 0)
-					return err;
+				    send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 				}
 			    }
 			}
@@ -313,94 +270,33 @@ main(int argc, char **argv)
 		} else if (ev.code == mod2) {
 		    if (ev.value == 1) {
 			mod2_down_or_held = 1;
-			printf("mod2_down_or_held = 1\n");
 			last_input_was_special_combination = 0;
-			printf("last_input_was_special_combination = 0\n");
 			time(&mod2_last_time_down);
-			printf("time(&mod1_last_time_down)\n");
 		    } else if (ev.value == 2) {
 			mod2_down_or_held = 1;
-			printf("mod2_down_or_held = 1\n");
 			last_input_was_special_combination = 0;
-			printf("last_input_was_special_combination = 0\n");
 		    } else {
 			mod2_down_or_held = 0;
-			printf("mod2_down_or_held = 0\n");
 			time(&now);
 			if (mod1_down_or_held) {
 			    if (difftime(now, mod2_last_time_down) < max_delay) {
 				last_input_was_special_combination = 1;
-				printf("last_input_was_special_combination = 1\n");
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod1_secondary_function, 1);
-				printf("mod1_secondary_function DOWN\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod2, 1);
-				printf("mod2 DOWN\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod2, 0);
-				printf("mod2 UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod1_secondary_function, 0);
-				printf("mod1_secondary_function UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;				
+				send_key_ev_and_sync(uidev, mod1_secondary_function, 1);
+				send_key_ev_and_sync(uidev, mod2, 1);
+				send_key_ev_and_sync(uidev, mod2, 0);
+				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    } else { // Avoid ``locking'' mod2's secondary function down
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod2_secondary_function, 0);
-				printf("mod2_secondary_function UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
+				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    }
 			} else {
 			    if (last_input_was_special_combination) {
-				err = libevdev_uinput_write_event(uidev, EV_KEY, mod2_secondary_function, 0);
-				printf("mod2_secondary_function UP\n");
-				if (err != 0)
-				    return err;
-				err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				if (err != 0)
-				    return err;
+				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    } else {
 				if (difftime(now, mod2_last_time_down) < max_delay) {
-				    err = libevdev_uinput_write_event(uidev, EV_KEY, mod2, 1);
-				    printf("mod2 DOWN\n");
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_KEY, mod2, 0);
-				    printf("mod2 UP\n");
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				    if (err != 0)
-					return err;
+				    send_key_ev_and_sync(uidev, mod2, 1);
+				    send_key_ev_and_sync(uidev, mod2, 0);
 				} else { // Avoid ``locking'' mod1's secondary function down
-				    err = libevdev_uinput_write_event(uidev, EV_KEY, mod2_secondary_function, 0);
-				    printf("mod2_secondary_function UP\n");
-				    if (err != 0)
-					return err;
-				    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-				    if (err != 0)
-					return err;
+				    send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 				}
 			    }
 			}
@@ -409,110 +305,34 @@ main(int argc, char **argv)
 		    if (ev.value == 1) {
 			if (mod1_down_or_held) {
 			    last_input_was_special_combination = 1;
-			    printf("last_input_was_special_combination = 1\n");
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, mod1_secondary_function, 1);
-			    printf("mod1_secondary_function DOWN\n");
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, ev.code, 1);
-			    printf("%s DOWN\n", libevdev_event_code_get_name(ev.type, ev.code));
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;			    
+			    send_key_ev_and_sync(uidev, mod1_secondary_function, 1);
+			    send_key_ev_and_sync(uidev, ev.code, 1);
 			} else if (mod2_down_or_held) {
 			    last_input_was_special_combination = 1;
-			    printf("last_input_was_special_combination = 1\n");
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, mod2_secondary_function, 1); // necessary?
-			    printf("mod2_secondary_function DOWN\n");
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, ev.code, 1);
-			    printf("%s DOWN\n", libevdev_event_code_get_name(ev.type, ev.code));
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
+			    send_key_ev_and_sync(uidev, mod2_secondary_function, 1); // necessary?
+			    send_key_ev_and_sync(uidev, ev.code, 1);
 			} else {
 			    last_input_was_special_combination = 0;
-			    printf("last_input_was_special_combination = 0\n");
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, ev.code, 1);
-			    printf("%s DOWN\n", libevdev_event_code_get_name(ev.type, ev.code));
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
+			    send_key_ev_and_sync(uidev, ev.code, 1);
 			}			
 		    } else if (ev.value == 2) {
 			if (mod1_down_or_held) {
 			    last_input_was_special_combination = 1;
-			    printf("last_input_was_special_combination = 1\n");
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, mod1_secondary_function, 2); // necessary?
-			    printf("mod1_secondary_function HELD\n");
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, ev.code, 2);
-			    printf("%s HELD\n", libevdev_event_code_get_name(ev.type, ev.code));
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
+			    send_key_ev_and_sync(uidev, mod1_secondary_function, 2);
+			    send_key_ev_and_sync(uidev, ev.code, 2);
 			} else if (mod2_down_or_held) {
 			    last_input_was_special_combination = 1;
-			    printf("last_input_was_special_combination = 1\n");
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, mod2_secondary_function, 2); // necessary?
-			    printf("mod2_secondary_function HELD\n");
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, ev.code, 2);
-			    printf("key(?) HELD\n");
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
+			    send_key_ev_and_sync(uidev, mod2_secondary_function, 2);
+			    send_key_ev_and_sync(uidev, ev.code, 2);
 			} else {
 			    last_input_was_special_combination = 0;
-			    printf("last_input_was_special_combination = 0\n");
-			    err = libevdev_uinput_write_event(uidev, EV_KEY, ev.code, 2);
-			    printf("%s HELD\n", libevdev_event_code_get_name(ev.type, ev.code));
-			    if (err != 0)
-				return err;
-			    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			    if (err != 0)
-				return err;
+			    send_key_ev_and_sync(uidev, ev.code, 2);
 			}
 		    } else {
-			err = libevdev_uinput_write_event(uidev, EV_KEY, ev.code, 0);
-			printf("%s UP\n", libevdev_event_code_get_name(ev.type, ev.code));
-			if (err != 0)
-			    return err;
-			err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-			if (err != 0)
-			    return err;
+			send_key_ev_and_sync(uidev, ev.code, 0);
 		    }
 		}
 	    }
-
-
-
-
 	}
     } while (rc == LIBEVDEV_READ_STATUS_SYNC || rc == LIBEVDEV_READ_STATUS_SUCCESS || rc == -EAGAIN);
     
