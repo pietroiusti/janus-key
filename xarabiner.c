@@ -35,19 +35,23 @@ unsigned int mod1_secondary_function = KEY_LEFTMETA;
 unsigned int mod2 = KEY_ENTER;
 unsigned int mod2_secondary_function = KEY_RIGHTMETA;
 //unsigned int mod2_secondary_function = KEY_RIGHTCTRL;
-float max_delay = 0.3;
+double max_delay = 0.3;
     
 // Flags
 int last_input_was_special_combination = 0;
 int mod1_down_or_held = 0;
 int mod2_down_or_held = 0;
 
-// Variables for calculating delay
-long int mod1_last_time_down = 0;
-long int mod2_last_time_down = 0;
-
+// For calculating delay
+struct timespec mod1_last_time_down;
+struct timespec mod2_last_time_down;
 // Hold current time when needed
-long int now;
+struct timespec now;
+
+// Return difference in seconds between two timespecs
+double difftime_timespec(struct timespec tp2, struct timespec tp1) {
+    return (((double)tp2.tv_sec + 1.0e-9*tp2.tv_nsec) - ((double)tp1.tv_sec + 1.0e-9*tp1.tv_nsec));
+}
 
 // Post the EV_KEY event of code `code` and `value` through the
 // uninput device `*uinput_dev` and send a (EV_SYN, SYN_REPORT, 0)
@@ -63,6 +67,8 @@ static int send_key_ev_and_sync(const struct libevdev_uinput *uinput_dev, unsign
     if (err != 0)
 	return err;
     
+    //printf("Sending %u %u\n", code, value);
+
     return 0;
 }
 
@@ -179,7 +185,8 @@ main(int argc, char **argv)
     if (argc < 2)
 	goto out;
 
-    sleep(1);
+    //sleep(1);
+    usleep(500000); //sleep for half a second
 
     file = argv[1];
     fd = open(file, O_RDONLY);
@@ -237,31 +244,39 @@ main(int argc, char **argv)
 		    if (ev.value == 1) {
 			mod1_down_or_held = 1;
 			last_input_was_special_combination = 0;
-			time(&mod1_last_time_down);
+			//time(&mod1_last_time_down);
+			clock_gettime(CLOCK_MONOTONIC, &mod1_last_time_down);
 		    } else if (ev.value == 2) {
 			mod1_down_or_held = 1;
 			last_input_was_special_combination = 0;
 		    } else {
 			mod1_down_or_held = 0;
-			time(&now);
+			//time(&now);
+			clock_gettime(CLOCK_MONOTONIC, &now);
 			if (mod2_down_or_held) {
-			    if (difftime(now, mod1_last_time_down) < max_delay) {
+			    //if ((foo = difftime(now, mod1_last_time_down)) < max_delay) {
+			    if (difftime_timespec(now, mod1_last_time_down) < max_delay) {
+				//printf("%lf\n", foo);
 				last_input_was_special_combination = 1;
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
 				send_key_ev_and_sync(uidev, mod1, 1);
 				send_key_ev_and_sync(uidev, mod1, 0);
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    } else { // Avoid ``locking'' mod1's secondary function down
+				//printf("%lf\n", foo);
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    }
 			} else {
 			    if (last_input_was_special_combination) {
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    } else {
-				if (difftime(now, mod1_last_time_down) < max_delay) {
+				//if ((foo = difftime(now, mod1_last_time_down)) < max_delay) {
+				if (difftime_timespec(now, mod1_last_time_down) < max_delay) {
+				    //printf("%lf\n", foo);
 				    send_key_ev_and_sync(uidev, mod1, 1);
 				    send_key_ev_and_sync(uidev, mod1, 0);
 				} else { // Avoid ``locking'' mod1's secondary function down
+				    //printf("%lf\n", foo);
 				    send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 				}
 			    }
@@ -271,31 +286,39 @@ main(int argc, char **argv)
 		    if (ev.value == 1) {
 			mod2_down_or_held = 1;
 			last_input_was_special_combination = 0;
-			time(&mod2_last_time_down);
+			//time(&mod2_last_time_down);
+			clock_gettime(CLOCK_MONOTONIC, &mod2_last_time_down);
 		    } else if (ev.value == 2) {
 			mod2_down_or_held = 1;
 			last_input_was_special_combination = 0;
 		    } else {
 			mod2_down_or_held = 0;
-			time(&now);
+			//time(&now);
+			clock_gettime(CLOCK_MONOTONIC, &now);
 			if (mod1_down_or_held) {
-			    if (difftime(now, mod2_last_time_down) < max_delay) {
+			    //if ((foo = difftime(now, mod2_last_time_down)) < max_delay) {
+			    if (difftime_timespec(now, mod2_last_time_down) < max_delay) {
+				//printf("%lf\n", foo);
 				last_input_was_special_combination = 1;
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 1);
 				send_key_ev_and_sync(uidev, mod2, 1);
 				send_key_ev_and_sync(uidev, mod2, 0);
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    } else { // Avoid ``locking'' mod2's secondary function down
+				//printf("%lf\n", foo);
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    }
 			} else {
 			    if (last_input_was_special_combination) {
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    } else {
-				if (difftime(now, mod2_last_time_down) < max_delay) {
+				//if ((foo = difftime(now, mod2_last_time_down)) < max_delay) {
+				if (difftime_timespec(now, mod2_last_time_down) < max_delay) {
+				    //printf("%lf\n", foo);
 				    send_key_ev_and_sync(uidev, mod2, 1);
 				    send_key_ev_and_sync(uidev, mod2, 0);
 				} else { // Avoid ``locking'' mod1's secondary function down
+				    //printf("%lf\n", foo);
 				    send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 				}
 			    }
