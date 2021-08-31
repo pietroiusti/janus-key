@@ -1,13 +1,8 @@
-// SPDX-License-Identifier: MIT
-/*
- * Copyright © 2013 Red Hat, Inc.
- */
-
 /*
   
-  Translation of xtramodifier.py into c.
+  NAME
 
- */
+*/
 
 // #include "config.h"
 
@@ -31,11 +26,14 @@
 // Config vars
 unsigned int mod1 = KEY_CAPSLOCK;
 unsigned int mod1_secondary_function = KEY_LEFTMETA;
-//unsigned int mod1_secondary_function = KEY_LEFTCTRL;
 unsigned int mod2 = KEY_ENTER;
 unsigned int mod2_secondary_function = KEY_RIGHTMETA;
-//unsigned int mod2_secondary_function = KEY_RIGHTCTRL;
-double max_delay = 0.3;
+// delay in milliseconds
+double max_delay = 300;
+
+
+// store delay into timespec struct
+struct timespec tp_max_delay;
     
 // Flags
 int last_input_was_special_combination = 0;
@@ -45,12 +43,35 @@ int mod2_down_or_held = 0;
 // For calculating delay
 struct timespec mod1_last_time_down;
 struct timespec mod2_last_time_down;
-// Hold current time when needed
 struct timespec now;
+struct timespec tp_sum;
 
-// Return difference in seconds between two timespecs
-double difftime_timespec(struct timespec tp2, struct timespec tp1) {
-    return (((double)tp2.tv_sec + 1.0e-9*tp2.tv_nsec) - ((double)tp1.tv_sec + 1.0e-9*tp1.tv_nsec));
+// Compare two timespec structs.
+// Return -1 if *tp1 < *tp2, 0 if *tp1 == *tp2, 1 if *tp1 < *tp2
+static int timespec_cmp(struct timespec *tp1, struct timespec *tp2) {
+    if (tp1->tv_sec > tp2->tv_sec) {
+	return -1;
+    }
+    else if (tp1->tv_sec < tp2->tv_sec) {
+	return 1;
+    } else { // tp1->tv_sec == tp2->tv_sec
+	if (tp1->tv_nsec > tp2->tv_nsec)
+	    return -1;
+	else if (tp1->tv_nsec < tp2->tv_nsec)
+	    return 1;
+	else
+	    return 0;
+    }
+}
+
+// Add two timespec structs.
+void timespec_add(struct timespec* a, struct timespec* b, struct timespec* c) {
+    c->tv_sec = a->tv_sec + b->tv_sec;
+    c->tv_nsec = a->tv_nsec + b->tv_nsec;
+    if (c->tv_nsec >= 1000000000) { // overflow
+	c->tv_nsec -= 1000000000;
+	c->tv_sec++;
+    }
 }
 
 // Post the EV_KEY event of code `code` and `value` through the
@@ -71,6 +92,14 @@ static int send_key_ev_and_sync(const struct libevdev_uinput *uinput_dev, unsign
 
     return 0;
 }
+
+/* 
+********************************************************************************
+BEGIN functions from libevdev-1.11.0/tools/libevdev-events.c
+********************************************************************************
+SPDX-License-Identifier: MIT
+Copyright © 2013 Red Hat, Inc.
+*/
 
 static void
 print_abs_bits(struct libevdev *dev, int axis)
@@ -174,9 +203,19 @@ print_sync_event(struct input_event *ev)
     return 0;
 }
 
+/* 
+********************************************************************************
+END functions from libevdev-1.11.0/tools/libevdev-events.c
+********************************************************************************
+*/
+
+
 int
 main(int argc, char **argv)
 {
+    tp_max_delay.tv_sec = 0;
+    tp_max_delay.tv_nsec = max_delay * 1000000;
+
     struct libevdev *dev = NULL;
     const char *file;
     int fd;
@@ -201,8 +240,6 @@ main(int argc, char **argv)
 	goto out;
     }
 
-    // see
-    // https://www.freedesktop.org/software/libevdev/doc/latest/group__uinput.html#details
     int err;
     int uifd;
     struct libevdev_uinput *uidev;
@@ -216,16 +253,12 @@ main(int argc, char **argv)
     err = libevdev_uinput_create_from_device(dev, uifd, &uidev);
     if (err != 0)
 	return err;
-
-
 	
     int grab = libevdev_grab(dev, LIBEVDEV_GRAB);
     if (grab < 0) {
 	printf("grab < 0\n");
 	return -errno;
     }
-
-
 
     do {
 	struct input_event ev;
@@ -239,44 +272,38 @@ main(int argc, char **argv)
 	    printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
 	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
 	    //print_event(&ev);
-	    if (ev.type == EV_KEY) { // if type is EV_KEY
+	    if (ev.type == EV_KEY) {
 		if (ev.code == mod1) {
 		    if (ev.value == 1) {
 			mod1_down_or_held = 1;
 			last_input_was_special_combination = 0;
-			//time(&mod1_last_time_down);
 			clock_gettime(CLOCK_MONOTONIC, &mod1_last_time_down);
 		    } else if (ev.value == 2) {
 			mod1_down_or_held = 1;
 			last_input_was_special_combination = 0;
 		    } else {
 			mod1_down_or_held = 0;
-			//time(&now);
 			clock_gettime(CLOCK_MONOTONIC, &now);
 			if (mod2_down_or_held) {
-			    //if ((foo = difftime(now, mod1_last_time_down)) < max_delay) {
-			    if (difftime_timespec(now, mod1_last_time_down) < max_delay) {
-				//printf("%lf\n", foo);
+			    timespec_add(&mod1_last_time_down, &tp_max_delay, &tp_sum);
+			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod1_last_time_down < tp_max_delay
 				last_input_was_special_combination = 1;
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
 				send_key_ev_and_sync(uidev, mod1, 1);
 				send_key_ev_and_sync(uidev, mod1, 0);
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    } else { // Avoid ``locking'' mod1's secondary function down
-				//printf("%lf\n", foo);
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    }
 			} else {
 			    if (last_input_was_special_combination) {
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    } else {
-				//if ((foo = difftime(now, mod1_last_time_down)) < max_delay) {
-				if (difftime_timespec(now, mod1_last_time_down) < max_delay) {
-				    //printf("%lf\n", foo);
+				timespec_add(&mod1_last_time_down, &tp_max_delay, &tp_sum);
+				if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod1_last_time_down < tp_max_delay
 				    send_key_ev_and_sync(uidev, mod1, 1);
 				    send_key_ev_and_sync(uidev, mod1, 0);
 				} else { // Avoid ``locking'' mod1's secondary function down
-				    //printf("%lf\n", foo);
 				    send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 				}
 			    }
@@ -286,39 +313,33 @@ main(int argc, char **argv)
 		    if (ev.value == 1) {
 			mod2_down_or_held = 1;
 			last_input_was_special_combination = 0;
-			//time(&mod2_last_time_down);
 			clock_gettime(CLOCK_MONOTONIC, &mod2_last_time_down);
 		    } else if (ev.value == 2) {
 			mod2_down_or_held = 1;
 			last_input_was_special_combination = 0;
 		    } else {
 			mod2_down_or_held = 0;
-			//time(&now);
 			clock_gettime(CLOCK_MONOTONIC, &now);
 			if (mod1_down_or_held) {
-			    //if ((foo = difftime(now, mod2_last_time_down)) < max_delay) {
-			    if (difftime_timespec(now, mod2_last_time_down) < max_delay) {
-				//printf("%lf\n", foo);
+			    timespec_add(&mod2_last_time_down, &tp_max_delay, &tp_sum);
+			    if (timespec_cmp(&now, &tp_sum) == 1) { // now - mod2_last_time_down < tp_max_delay
 				last_input_was_special_combination = 1;
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 1);
 				send_key_ev_and_sync(uidev, mod2, 1);
 				send_key_ev_and_sync(uidev, mod2, 0);
 				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
 			    } else { // Avoid ``locking'' mod2's secondary function down
-				//printf("%lf\n", foo);
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    }
 			} else {
 			    if (last_input_was_special_combination) {
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 			    } else {
-				//if ((foo = difftime(now, mod2_last_time_down)) < max_delay) {
-				if (difftime_timespec(now, mod2_last_time_down) < max_delay) {
-				    //printf("%lf\n", foo);
+				timespec_add(&mod2_last_time_down, &tp_max_delay, &tp_sum);
+				if (timespec_cmp(&now, &tp_sum) == 1) { // now - mod2_last_time_down < tp_max_delay
 				    send_key_ev_and_sync(uidev, mod2, 1);
 				    send_key_ev_and_sync(uidev, mod2, 0);
 				} else { // Avoid ``locking'' mod1's secondary function down
-				    //printf("%lf\n", foo);
 				    send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 				}
 			    }
@@ -332,7 +353,7 @@ main(int argc, char **argv)
 			    send_key_ev_and_sync(uidev, ev.code, 1);
 			} else if (mod2_down_or_held) {
 			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod2_secondary_function, 1); // necessary?
+			    send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
 			    send_key_ev_and_sync(uidev, ev.code, 1);
 			} else {
 			    last_input_was_special_combination = 0;
@@ -341,11 +362,11 @@ main(int argc, char **argv)
 		    } else if (ev.value == 2) {
 			if (mod1_down_or_held) {
 			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod1_secondary_function, 2);
+			    send_key_ev_and_sync(uidev, mod1_secondary_function, 2); // necessary?
 			    send_key_ev_and_sync(uidev, ev.code, 2);
 			} else if (mod2_down_or_held) {
 			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod2_secondary_function, 2);
+			    send_key_ev_and_sync(uidev, mod2_secondary_function, 2); // necessary?
 			    send_key_ev_and_sync(uidev, ev.code, 2);
 			} else {
 			    last_input_was_special_combination = 0;
