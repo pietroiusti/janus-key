@@ -4,7 +4,7 @@
 
 */
 
-// #include "config.h"
+#include "./config.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -22,15 +22,6 @@
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>
-
-// Config vars
-unsigned int mod1 = KEY_CAPSLOCK;
-unsigned int mod1_secondary_function = KEY_LEFTMETA;
-unsigned int mod2 = KEY_ENTER;
-unsigned int mod2_secondary_function = KEY_RIGHTMETA;
-// delay in milliseconds
-double max_delay = 300;
-
 
 // store delay into timespec struct
 struct timespec tp_max_delay;
@@ -65,7 +56,7 @@ static int timespec_cmp(struct timespec *tp1, struct timespec *tp2) {
 }
 
 // Add two timespec structs.
-void timespec_add(struct timespec* a, struct timespec* b, struct timespec* c) {
+static void timespec_add(struct timespec* a, struct timespec* b, struct timespec* c) {
     c->tv_sec = a->tv_sec + b->tv_sec;
     c->tv_nsec = a->tv_nsec + b->tv_nsec;
     if (c->tv_nsec >= 1000000000) { // overflow
