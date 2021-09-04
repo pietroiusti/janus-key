@@ -23,6 +23,11 @@
 #include <time.h>
 #include <stdlib.h>
 
+unsigned int mod1;
+unsigned int mod1_secondary_function;
+unsigned int mod2;
+unsigned int mod2_secondary_function;
+
 // store delay into timespec struct
 struct timespec tp_max_delay;
     
@@ -36,6 +41,15 @@ struct timespec mod1_last_time_down;
 struct timespec mod2_last_time_down;
 struct timespec now;
 struct timespec tp_sum;
+
+int is_in_janus_map(unsigned int key) {
+    size_t length = sizeof(janus_map)/sizeof(janus_map[0]);
+    for (int i = 0; i < length; i++) {
+	if (janus_map[i].key1 == key)
+	    return i;
+    }
+    return -1;
+};
 
 // Compare two timespec structs.
 // Return -1 if *tp1 < *tp2, 0 if *tp1 == *tp2, 1 if *tp1 < *tp2
@@ -264,7 +278,14 @@ main(int argc, char **argv)
 	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
 	    //print_event(&ev);
 	    if (ev.type == EV_KEY) {
-		if (ev.code == mod1) {
+		int i;
+		if ((i = is_in_janus_map(ev.code)) >= 0) {
+		    int j = i == 0 ? 1 : 0;
+		    mod1 = janus_map[i].key1;
+		    mod1_secondary_function = janus_map[i].key2;
+		    mod2 = janus_map[j].key1;
+		    mod2_secondary_function = janus_map[j].key2;
+
 		    if (ev.value == 1) {
 			mod1_down_or_held = 1;
 			last_input_was_special_combination = 0;
@@ -296,42 +317,6 @@ main(int argc, char **argv)
 				    send_key_ev_and_sync(uidev, mod1, 0);
 				} else { // Avoid ``locking'' mod1's secondary function down
 				    send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
-				}
-			    }
-			}
-		    }
-		} else if (ev.code == mod2) {
-		    if (ev.value == 1) {
-			mod2_down_or_held = 1;
-			last_input_was_special_combination = 0;
-			clock_gettime(CLOCK_MONOTONIC, &mod2_last_time_down);
-		    } else if (ev.value == 2) {
-			mod2_down_or_held = 1;
-			last_input_was_special_combination = 0;
-		    } else {
-			mod2_down_or_held = 0;
-			clock_gettime(CLOCK_MONOTONIC, &now);
-			if (mod1_down_or_held) {
-			    timespec_add(&mod2_last_time_down, &tp_max_delay, &tp_sum);
-			    if (timespec_cmp(&now, &tp_sum) == 1) { // now - mod2_last_time_down < tp_max_delay
-				last_input_was_special_combination = 1;
-				send_key_ev_and_sync(uidev, mod1_secondary_function, 1);
-				send_key_ev_and_sync(uidev, mod2, 1);
-				send_key_ev_and_sync(uidev, mod2, 0);
-				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
-			    } else { // Avoid ``locking'' mod2's secondary function down
-				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
-			    }
-			} else {
-			    if (last_input_was_special_combination) {
-				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
-			    } else {
-				timespec_add(&mod2_last_time_down, &tp_max_delay, &tp_sum);
-				if (timespec_cmp(&now, &tp_sum) == 1) { // now - mod2_last_time_down < tp_max_delay
-				    send_key_ev_and_sync(uidev, mod2, 1);
-				    send_key_ev_and_sync(uidev, mod2, 0);
-				} else { // Avoid ``locking'' mod1's secondary function down
-				    send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
 				}
 			    }
 			}

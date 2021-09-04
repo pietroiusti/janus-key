@@ -1,10 +1,14 @@
 #include "libevdev/libevdev-uinput.h"
 
-// Extra modifiers
-unsigned int mod1 = KEY_CAPSLOCK;
-unsigned int mod1_secondary_function = KEY_LEFTMETA;
-unsigned int mod2 = KEY_ENTER;
-unsigned int mod2_secondary_function = KEY_RIGHTMETA;
+typedef struct {
+    unsigned int key1;
+    unsigned int key2;
+} janus_key;
+
+janus_key janus_map[2] = {
+    {KEY_CAPSLOCK, KEY_LEFTMETA},
+    {KEY_ENTER, KEY_RIGHTMETA},
+};
 
 // Delay in milliseconds
 double max_delay = 300;
