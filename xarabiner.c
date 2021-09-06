@@ -23,18 +23,10 @@
 #include <time.h>
 #include <stdlib.h>
 
-unsigned int mod1;
-unsigned int mod1_secondary_function;
-unsigned int mod2;
-unsigned int mod2_secondary_function;
+int last_input_was_special_combination = 0;
 
 // store delay into timespec struct
 struct timespec tp_max_delay;
-    
-// Flags
-int last_input_was_special_combination = 0;
-int mod1_down_or_held = 0;
-int mod2_down_or_held = 0;
 
 // For calculating delay
 struct timespec mod1_last_time_down;
@@ -280,77 +272,11 @@ main(int argc, char **argv)
 	    if (ev.type == EV_KEY) {
 		int i;
 		if ((i = is_in_janus_map(ev.code)) >= 0) {
-		    int j = i == 0 ? 1 : 0;
-		    mod1 = janus_map[i].key1;
-		    mod1_secondary_function = janus_map[i].key2;
-		    mod2 = janus_map[j].key1;
-		    mod2_secondary_function = janus_map[j].key2;
-
-		    if (ev.value == 1) {
-			mod1_down_or_held = 1;
-			last_input_was_special_combination = 0;
-			clock_gettime(CLOCK_MONOTONIC, &mod1_last_time_down);
-		    } else if (ev.value == 2) {
-			mod1_down_or_held = 1;
-			last_input_was_special_combination = 0;
-		    } else {
-			mod1_down_or_held = 0;
-			clock_gettime(CLOCK_MONOTONIC, &now);
-			if (mod2_down_or_held) {
-			    timespec_add(&mod1_last_time_down, &tp_max_delay, &tp_sum);
-			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod1_last_time_down < tp_max_delay
-				last_input_was_special_combination = 1;
-				send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
-				send_key_ev_and_sync(uidev, mod1, 1);
-				send_key_ev_and_sync(uidev, mod1, 0);
-				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
-			    } else { // Avoid ``locking'' mod1's secondary function down
-				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
-			    }
-			} else {
-			    if (last_input_was_special_combination) {
-				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
-			    } else {
-				timespec_add(&mod1_last_time_down, &tp_max_delay, &tp_sum);
-				if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod1_last_time_down < tp_max_delay
-				    send_key_ev_and_sync(uidev, mod1, 1);
-				    send_key_ev_and_sync(uidev, mod1, 0);
-				} else { // Avoid ``locking'' mod1's secondary function down
-				    send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
-				}
-			    }
-			}
-		    }
+		    // Update key in the janus map 
+		    ;
+		    /* send_key_ev_and_sync(uidev, mod1_secondary_function, 0); */
 		} else {
-		    if (ev.value == 1) {
-			if (mod1_down_or_held) {
-			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod1_secondary_function, 1);
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			} else if (mod2_down_or_held) {
-			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			} else {
-			    last_input_was_special_combination = 0;
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			}			
-		    } else if (ev.value == 2) {
-			if (mod1_down_or_held) {
-			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod1_secondary_function, 2); // necessary?
-			    send_key_ev_and_sync(uidev, ev.code, 2);
-			} else if (mod2_down_or_held) {
-			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod2_secondary_function, 2); // necessary?
-			    send_key_ev_and_sync(uidev, ev.code, 2);
-			} else {
-			    last_input_was_special_combination = 0;
-			    send_key_ev_and_sync(uidev, ev.code, 2);
-			}
-		    } else {
-			send_key_ev_and_sync(uidev, ev.code, 0);
-		    }
+		    send_key_ev_and_sync(uidev, ev.code, ev.value);
 		}
 	    }
 	}
