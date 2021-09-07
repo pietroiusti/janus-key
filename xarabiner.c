@@ -272,11 +272,53 @@ main(int argc, char **argv)
 	    if (ev.type == EV_KEY) {
 		int i;
 		if ((i = is_in_janus_map(ev.code)) >= 0) {
-		    // Update key in the janus map 
-		    ;
-		    /* send_key_ev_and_sync(uidev, mod1_secondary_function, 0); */
+		    if (ev.value == 1) {
+			// set jk.state to 1
+			// set jk.last_time_down to now
+			// set l_i_w_s_c to 0
+		    } else if (ev.value == 2) {
+			// set jk.state to 1 (perhaps 2?)
+			// set l_i_w_s_c to 0
+		    } else {
+			if (some_jks_is_down_or_held()) {
+			    if (time < delay) {
+				if (last_input_was_special_combination) {
+				    // set jk.state to 0
+				    // (perhaps send 0 defensively)
+				} else {
+				    // set jk.state to 0
+				    // set last_input_was_special_combination to 1
+				    // send jk's primary function + down/held jks secondary functions
+				}
+			    } else {
+				// set jk.state to 0
+				// (perhaps send 0 defensively)
+			    }
+			} else {
+			    if (time < delay) {
+				if (last_input_was_special_combination) {
+				    // set jk.state to 0
+				    // (perhaps send 0 defensively)
+				} else {
+				    // set jk.state to 0
+				    // send jk's primary function
+				    // (set last_input_was_special_combination = 0 ????????????????????)
+				}
+			    } else {
+				// set jk.state = 0
+				// (perhaps send 0 defensively)
+			    }
+			}
+		    }
 		} else {
-		    send_key_ev_and_sync(uidev, ev.code, ev.value);
+		    if (ev.value == 1) {
+
+		    } else if (ev.value == 2) {
+
+		    } else {
+
+		    }
+		    //send_key_ev_and_sync(uidev, ev.code, ev.value);
 		}
 	    }
 	}
