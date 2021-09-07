@@ -312,11 +312,25 @@ main(int argc, char **argv)
 		    }
 		} else {
 		    if (ev.value == 1) {
-
+			if (some_jks_is_down_or_held()) {
+			    // set last_input_was_special_combination = 1
+			    // send down/held jks secondary function *1*
+			    // send key 1
+			} else {
+			    // set last_input_was_special_combination = 0
+			    // send key 1
+			}
 		    } else if (ev.value == 2) {
-
+			if (some_jks_is_down_or_held()) {
+			    // set last_input_was_special_combination = 1
+			    // send down/held jks secondary function *2* (or simply *1*?)
+			    // send key 2 (or simply 1?)
+			} else {
+			    // set last_input_was_special_combination = 0
+			    // send key 2 (or simply 1?)
+			}
 		    } else {
-
+			// send key 0
 		    }
 		    //send_key_ev_and_sync(uidev, ev.code, ev.value);
 		}
