@@ -299,6 +299,8 @@ main(int argc, char **argv)
 			if (mod2_down_or_held) {
 			    timespec_add(&mod1_last_time_down, &tp_max_delay, &tp_sum);
 			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod1_last_time_down < tp_max_delay
+				// TODO: here I should check whether last_input_was_special_combination == 1
+				// If this condition is true, then we should NOT send mod1 (primary function) events!
 				last_input_was_special_combination = 1;
 				send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
 				send_key_ev_and_sync(uidev, mod1, 1);
