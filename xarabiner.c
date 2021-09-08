@@ -1,6 +1,6 @@
 /*
   
-  NAME
+  janus-key
 
 */
 
@@ -23,24 +23,25 @@
 #include <time.h>
 #include <stdlib.h>
 
-unsigned int mod1;
-unsigned int mod1_secondary_function;
-unsigned int mod2;
-unsigned int mod2_secondary_function;
+int last_input_was_special_combination = 0;
 
 // store delay into timespec struct
 struct timespec tp_max_delay;
-    
-// Flags
-int last_input_was_special_combination = 0;
-int mod1_down_or_held = 0;
-int mod2_down_or_held = 0;
 
 // For calculating delay
 struct timespec mod1_last_time_down;
 struct timespec mod2_last_time_down;
 struct timespec now;
 struct timespec tp_sum;
+
+int some_jks_is_down_or_held() {
+    size_t length = sizeof(janus_map)/sizeof(janus_map[0]);
+    for (int i = 0; i < length; i++) {
+	if (janus_map[i].state == 1 || janus_map[i].state == 2)
+	    return i;
+    }
+    return -1;
+}
 
 int is_in_janus_map(unsigned int key) {
     size_t length = sizeof(janus_map)/sizeof(janus_map[0]);
@@ -280,77 +281,114 @@ main(int argc, char **argv)
 	    if (ev.type == EV_KEY) {
 		int i;
 		if ((i = is_in_janus_map(ev.code)) >= 0) {
-		    int j = i == 0 ? 1 : 0;
-		    mod1 = janus_map[i].key1;
-		    mod1_secondary_function = janus_map[i].key2;
-		    mod2 = janus_map[j].key1;
-		    mod2_secondary_function = janus_map[j].key2;
-
 		    if (ev.value == 1) {
-			mod1_down_or_held = 1;
+			// set jk.state to 1
+			janus_map[i].state = 1;
+			// set jk.last_time_down to now
+			clock_gettime(CLOCK_MONOTONIC, &(janus_map[i].last_time_down));
+			// set l_i_w_s_c to 0
 			last_input_was_special_combination = 0;
-			clock_gettime(CLOCK_MONOTONIC, &mod1_last_time_down);
 		    } else if (ev.value == 2) {
-			mod1_down_or_held = 1;
+			// set jk.state to 1 (perhaps 2?)
+			janus_map[i].state = 1;
+			// set l_i_w_s_c to 0
 			last_input_was_special_combination = 0;
 		    } else {
-			mod1_down_or_held = 0;
+			// set jk.state to 0
+			janus_map[i].state = 0;
 			clock_gettime(CLOCK_MONOTONIC, &now);
-			if (mod2_down_or_held) {
-			    timespec_add(&mod1_last_time_down, &tp_max_delay, &tp_sum);
-			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod1_last_time_down < tp_max_delay
-				// TODO: here I should check whether last_input_was_special_combination == 1
-				// If this condition is true, then we should NOT send mod1 (primary function) events!
-				last_input_was_special_combination = 1;
-				send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
-				send_key_ev_and_sync(uidev, mod1, 1);
-				send_key_ev_and_sync(uidev, mod1, 0);
-				send_key_ev_and_sync(uidev, mod2_secondary_function, 0);
-			    } else { // Avoid ``locking'' mod1's secondary function down
-				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
+			if (some_jks_is_down_or_held() >= 0) {
+			    timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
+				if (last_input_was_special_combination) {
+				    // set jk.state to 0 (or do it earlier?)
+				    // (perhaps send 0 defensively)
+				    send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
+				} else {
+				    // set jk.state to 0 (or do it earlier?)
+				    // set last_input_was_special_combination to 1
+				    last_input_was_special_combination = 1;
+				    // send jk's primary function + down/held jks secondary functions
+				    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+					if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+					    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+					}
+				    }
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 1);
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 0);
+				    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+					if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+					    send_key_ev_and_sync(uidev, janus_map[j].key2, 0);
+					}
+				    }
+				}
+			    } else {
+				// set jk.state to 0 (or do it earlier?)
+				// (perhaps send 0 defensively)
+				send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
 			    }
 			} else {
-			    if (last_input_was_special_combination) {
-				send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
-			    } else {
-				timespec_add(&mod1_last_time_down, &tp_max_delay, &tp_sum);
-				if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod1_last_time_down < tp_max_delay
-				    send_key_ev_and_sync(uidev, mod1, 1);
-				    send_key_ev_and_sync(uidev, mod1, 0);
-				} else { // Avoid ``locking'' mod1's secondary function down
-				    send_key_ev_and_sync(uidev, mod1_secondary_function, 0);
+			    timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
+				if (last_input_was_special_combination) {
+				    // set jk.state to 0 (or do it earlier?)
+				    // (perhaps send 0 defensively)
+				    send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
+				    ;
+				} else {
+				    // set jk.state to 0 (or do it earlier?)
+				    // send jk's primary function
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 1);
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 0);
+				    // (set last_input_was_special_combination = 0 ????????????????????)
+				    last_input_was_special_combination = 0;
 				}
+			    } else {
+				// set jk.state = 0 (or do it earlier?)
+				// (perhaps send 0 defensively) 
+				send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
 			    }
 			}
 		    }
 		} else {
 		    if (ev.value == 1) {
-			if (mod1_down_or_held) {
+			if (some_jks_is_down_or_held() >= 0) {
+			    // set last_input_was_special_combination = 1
 			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod1_secondary_function, 1);
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			} else if (mod2_down_or_held) {
-			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod2_secondary_function, 1);
+			    // send down/held jks secondary function *1*
+			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+				    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+				}
+			    }
+			    // send key 1
 			    send_key_ev_and_sync(uidev, ev.code, 1);
 			} else {
+			    // set last_input_was_special_combination = 0
 			    last_input_was_special_combination = 0;
+			    // send key 1
 			    send_key_ev_and_sync(uidev, ev.code, 1);
-			}			
-		    } else if (ev.value == 2) {
-			if (mod1_down_or_held) {
-			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod1_secondary_function, 2); // necessary?
-			    send_key_ev_and_sync(uidev, ev.code, 2);
-			} else if (mod2_down_or_held) {
-			    last_input_was_special_combination = 1;
-			    send_key_ev_and_sync(uidev, mod2_secondary_function, 2); // necessary?
-			    send_key_ev_and_sync(uidev, ev.code, 2);
-			} else {
-			    last_input_was_special_combination = 0;
-			    send_key_ev_and_sync(uidev, ev.code, 2);
 			}
-		    } else {
+		    } else if (ev.value == 2) {
+			if (some_jks_is_down_or_held() >= 0) {
+			    // set last_input_was_special_combination = 1
+			    last_input_was_special_combination = 1;
+			    // send down/held jks secondary function *2* (or simply *1*?)
+			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+				    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+				}
+			    }
+			    // send key 2 (or simply 1?)
+			    send_key_ev_and_sync(uidev, ev.code, 1);
+			} else {
+			    // set last_input_was_special_combination = 0
+			    last_input_was_special_combination = 0;
+			    // send key 2 (or simply 1?)
+			    send_key_ev_and_sync(uidev, ev.code, 1);
+			}
+		    } else { // if (ev.value == 0)
+			// send key 0
 			send_key_ev_and_sync(uidev, ev.code, 0);
 		    }
 		}
