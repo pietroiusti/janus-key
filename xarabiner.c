@@ -1,6 +1,6 @@
 /*
   
-  NAME
+  janus-key
 
 */
 
@@ -33,6 +33,15 @@ struct timespec mod1_last_time_down;
 struct timespec mod2_last_time_down;
 struct timespec now;
 struct timespec tp_sum;
+
+int some_jks_is_down_or_held() {
+    size_t length = sizeof(janus_map)/sizeof(janus_map[0]);
+    for (int i = 0; i < length; i++) {
+	if (janus_map[i].state == 1 || janus_map[i].state == 2)
+	    return i;
+    }
+    return -1;
+}
 
 int is_in_janus_map(unsigned int key) {
     size_t length = sizeof(janus_map)/sizeof(janus_map[0]);
@@ -274,65 +283,114 @@ main(int argc, char **argv)
 		if ((i = is_in_janus_map(ev.code)) >= 0) {
 		    if (ev.value == 1) {
 			// set jk.state to 1
+			janus_map[i].state = 1;
 			// set jk.last_time_down to now
+			clock_gettime(CLOCK_MONOTONIC, &(janus_map[i].last_time_down));
 			// set l_i_w_s_c to 0
+			last_input_was_special_combination = 0;
 		    } else if (ev.value == 2) {
 			// set jk.state to 1 (perhaps 2?)
+			janus_map[i].state = 1;
 			// set l_i_w_s_c to 0
+			last_input_was_special_combination = 0;
 		    } else {
-			if (some_jks_is_down_or_held()) {
-			    if (time < delay) {
+			// set jk.state to 0
+			janus_map[i].state = 0;
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			if (some_jks_is_down_or_held() >= 0) {
+			    timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
 				if (last_input_was_special_combination) {
-				    // set jk.state to 0
+				    // set jk.state to 0 (or do it earlier?)
 				    // (perhaps send 0 defensively)
+				    send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
 				} else {
-				    // set jk.state to 0
+				    // set jk.state to 0 (or do it earlier?)
 				    // set last_input_was_special_combination to 1
+				    last_input_was_special_combination = 1;
 				    // send jk's primary function + down/held jks secondary functions
+				    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+					if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+					    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+					}
+				    }
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 1);
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 0);
+				    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+					if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+					    send_key_ev_and_sync(uidev, janus_map[j].key2, 0);
+					}
+				    }
 				}
 			    } else {
-				// set jk.state to 0
+				// set jk.state to 0 (or do it earlier?)
 				// (perhaps send 0 defensively)
+				send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
 			    }
 			} else {
-			    if (time < delay) {
+			    timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
 				if (last_input_was_special_combination) {
-				    // set jk.state to 0
+				    // set jk.state to 0 (or do it earlier?)
 				    // (perhaps send 0 defensively)
+				    send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
+				    ;
 				} else {
-				    // set jk.state to 0
+				    // set jk.state to 0 (or do it earlier?)
 				    // send jk's primary function
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 1);
+				    send_key_ev_and_sync(uidev, janus_map[i].key1, 0);
 				    // (set last_input_was_special_combination = 0 ????????????????????)
+				    last_input_was_special_combination = 0;
 				}
 			    } else {
-				// set jk.state = 0
-				// (perhaps send 0 defensively)
+				// set jk.state = 0 (or do it earlier?)
+				// (perhaps send 0 defensively) 
+				send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
 			    }
 			}
 		    }
 		} else {
 		    if (ev.value == 1) {
-			if (some_jks_is_down_or_held()) {
+			if (some_jks_is_down_or_held() >= 0) {
 			    // set last_input_was_special_combination = 1
+			    last_input_was_special_combination = 1;
 			    // send down/held jks secondary function *1*
+			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+				    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+				}
+			    }
 			    // send key 1
+			    send_key_ev_and_sync(uidev, ev.code, 1);
 			} else {
 			    // set last_input_was_special_combination = 0
+			    last_input_was_special_combination = 0;
 			    // send key 1
+			    send_key_ev_and_sync(uidev, ev.code, 1);
 			}
 		    } else if (ev.value == 2) {
-			if (some_jks_is_down_or_held()) {
+			if (some_jks_is_down_or_held() >= 0) {
 			    // set last_input_was_special_combination = 1
+			    last_input_was_special_combination = 1;
 			    // send down/held jks secondary function *2* (or simply *1*?)
+			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+				    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+				}
+			    }
 			    // send key 2 (or simply 1?)
+			    send_key_ev_and_sync(uidev, ev.code, 1);
 			} else {
 			    // set last_input_was_special_combination = 0
+			    last_input_was_special_combination = 0;
 			    // send key 2 (or simply 1?)
+			    send_key_ev_and_sync(uidev, ev.code, 1);
 			}
-		    } else {
+		    } else { // if (ev.value == 0)
 			// send key 0
+			send_key_ev_and_sync(uidev, ev.code, 0);
 		    }
-		    //send_key_ev_and_sync(uidev, ev.code, ev.value);
 		}
 	    }
 	}
