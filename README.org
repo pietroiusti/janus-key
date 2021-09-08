@@ -2,7 +2,7 @@ Install libevdev if you have not already.
 
 Compile with
 #+begin_src
-gcc `pkg-config --cflags libevdev` `pkg-config --libs libevdev` xarabiner.c
+gcc `pkg-config --cflags libevdev` `pkg-config --libs libevdev` janus-key.c
 #+end_src
 
 Copyright (C) 2021  Giulio Pietroiusti
