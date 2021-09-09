@@ -4,13 +4,32 @@
 typedef struct {
     unsigned int key1;
     unsigned int key2;
+} key_pair;
+
+// keys' primary function map
+key_pair pf_map[] = {
+    // {KEY_A, KEY_B},
+    {KEY_CAPSLOCK, KEY_ESC},
+};
+
+typedef struct {
+    unsigned int key1;
+    unsigned int key2;
     unsigned int state;
     struct timespec last_time_down;
 } janus_key;
 
-janus_key janus_map[2] = {
-    {KEY_CAPSLOCK, KEY_LEFTMETA},
-    {KEY_ENTER, KEY_RIGHTMETA},
+// keys' secondary function map
+janus_key janus_map[] = {
+    // assuming x keycodes are left default, this works for my filco usb keyboard
+    {KEY_CAPSLOCK, KEY_LEFTALT},
+    {KEY_ENTER, KEY_RIGHTALT},
+    {KEY_LEFTCTRL, KEY_LEFTMETA},
+    {KEY_LEFTMETA, KEY_LEFTALT},
+    {KEY_LEFTALT, KEY_LEFTCTRL},
+    {KEY_RIGHTALT, KEY_RIGHTCTRL},
+    {KEY_RIGHTMETA, KEY_RIGHTALT},
+    {KEY_COMPOSE, KEY_RIGHTMETA},
 };
 
 // Delay in milliseconds

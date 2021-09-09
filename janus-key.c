@@ -34,7 +34,16 @@ struct timespec mod2_last_time_down;
 struct timespec now;
 struct timespec tp_sum;
 
-int some_jks_is_down_or_held() {
+static int is_in_pf_map(unsigned int key) {
+     size_t length = sizeof(pf_map)/sizeof(pf_map[0]);
+    for (int i = 0; i < length; i++) {
+	if (pf_map[i].key1 == key)
+	    return i;
+    }
+    return -1;
+};
+
+static int some_jks_is_down_or_held() {
     size_t length = sizeof(janus_map)/sizeof(janus_map[0]);
     for (int i = 0; i < length; i++) {
 	if (janus_map[i].state == 1 || janus_map[i].state == 2)
@@ -43,7 +52,7 @@ int some_jks_is_down_or_held() {
     return -1;
 }
 
-int is_in_janus_map(unsigned int key) {
+static int is_in_janus_map(unsigned int key) {
     size_t length = sizeof(janus_map)/sizeof(janus_map[0]);
     for (int i = 0; i < length; i++) {
 	if (janus_map[i].key1 == key)
@@ -97,6 +106,16 @@ static int send_key_ev_and_sync(const struct libevdev_uinput *uinput_dev, unsign
     //printf("Sending %u %u\n", code, value);
 
     return 0;
+}
+
+static int handle_ev_key_event(const struct libevdev_uinput *uinput_dev, unsigned int code, int value) {
+    int i;
+    if ((i = is_in_pf_map(code)) >= 0) {
+	send_key_ev_and_sync(uinput_dev, pf_map[i].key2, value);
+    } else {
+	send_key_ev_and_sync(uinput_dev, code, value);
+    }
+
 }
 
 /* 
@@ -314,8 +333,8 @@ main(int argc, char **argv)
 					    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
 					}
 				    }
-				    send_key_ev_and_sync(uidev, janus_map[i].key1, 1);
-				    send_key_ev_and_sync(uidev, janus_map[i].key1, 0);
+				    handle_ev_key_event(uidev, janus_map[i].key1, 1);
+				    handle_ev_key_event(uidev, janus_map[i].key1, 0);
 				    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
 					if (janus_map[j].state == 1 || janus_map[j].state == 2) {
 					    send_key_ev_and_sync(uidev, janus_map[j].key2, 0);
@@ -334,12 +353,11 @@ main(int argc, char **argv)
 				    // set jk.state to 0 (or do it earlier?)
 				    // (perhaps send 0 defensively)
 				    send_key_ev_and_sync(uidev, janus_map[i].key2, 0);
-				    ;
 				} else {
 				    // set jk.state to 0 (or do it earlier?)
 				    // send jk's primary function
-				    send_key_ev_and_sync(uidev, janus_map[i].key1, 1);
-				    send_key_ev_and_sync(uidev, janus_map[i].key1, 0);
+				    handle_ev_key_event(uidev, janus_map[i].key1, 1);
+				    handle_ev_key_event(uidev, janus_map[i].key1, 0);
 				    // (set last_input_was_special_combination = 0 ????????????????????)
 				    last_input_was_special_combination = 0;
 				}
@@ -350,7 +368,7 @@ main(int argc, char **argv)
 			    }
 			}
 		    }
-		} else {
+		} else { // non-janus-keys
 		    if (ev.value == 1) {
 			if (some_jks_is_down_or_held() >= 0) {
 			    // set last_input_was_special_combination = 1
@@ -358,16 +376,16 @@ main(int argc, char **argv)
 			    // send down/held jks secondary function *1*
 			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
 				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-				    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+				    handle_ev_key_event(uidev, janus_map[j].key2, 1);
 				}
 			    }
 			    // send key 1
-			    send_key_ev_and_sync(uidev, ev.code, 1);
+			    handle_ev_key_event(uidev, ev.code, 1);
 			} else {
 			    // set last_input_was_special_combination = 0
 			    last_input_was_special_combination = 0;
 			    // send key 1
-			    send_key_ev_and_sync(uidev, ev.code, 1);
+			    handle_ev_key_event(uidev, ev.code, 1);
 			}
 		    } else if (ev.value == 2) {
 			if (some_jks_is_down_or_held() >= 0) {
@@ -376,20 +394,20 @@ main(int argc, char **argv)
 			    // send down/held jks secondary function *2* (or simply *1*?)
 			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
 				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-				    send_key_ev_and_sync(uidev, janus_map[j].key2, 1);
+				    handle_ev_key_event(uidev, janus_map[j].key2, 1);
 				}
 			    }
 			    // send key 2 (or simply 1?)
-			    send_key_ev_and_sync(uidev, ev.code, 1);
+			    handle_ev_key_event(uidev, ev.code, 1);
 			} else {
 			    // set last_input_was_special_combination = 0
 			    last_input_was_special_combination = 0;
 			    // send key 2 (or simply 1?)
-			    send_key_ev_and_sync(uidev, ev.code, 1);
+			    handle_ev_key_event(uidev, ev.code, 1);
 			}
 		    } else { // if (ev.value == 0)
 			// send key 0
-			send_key_ev_and_sync(uidev, ev.code, 0);
+			handle_ev_key_event(uidev, ev.code, 0);
 		    }
 		}
 	    }
