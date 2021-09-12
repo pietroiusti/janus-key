@@ -14,5 +14,7 @@ janus_key janus_map[] = {
     {  KEY_ENTER,            KEY_RIGHTMETA   },
 };
 
-// Delay in milliseconds
-double max_delay = 300;
+// Delay in milliseconds.
+// If a key is held down for a time > max_delay, then, when released,
+// it will not act in the standard way.
+unsigned int max_delay = 300;

@@ -1,9 +1,39 @@
-Install libevdev if you have not already.
+janus-key assigns to keys a secondary function so that they act in
+their normal way when pressed and released, but in another way when
+held down.
 
+Hence janus-key allows you to use normal keys as modifiers (CTRL, ALT,
+etc.). Emacs users can use it to keep their pinky healthy without
+indulging in the keybindings of the beast.
+
+janus-key sits at a [[https://www.freedesktop.org/software/libevdev/doc/latest/][relatively low level]], so it can be combined with
+other standard remapping tools that operate at a higher level.
+
+* Dependencies
+Install *libevdev* on your system if you have not already.
+
+* Configuration
+Edit config.h
+
+In order to know what the names of the keys of a certain device are
+you can use *evtest*.
+
+In the default configuration, CAPSLOCK and ENTER are assigned CTRL as
+their secondary function.
+
+* Compile and run
 Compile with
 #+begin_src
-gcc `pkg-config --cflags libevdev` `pkg-config --libs libevdev` janus-key.c
+gcc `pkg-config --cflags libevdev` `pkg-config --libs libevdev` janus-key.c -o janus-key
 #+end_src
+
+Run
+#+begin_src
+sudo ./janus-key /dev/input/event<NUMBER>
+#+end_src
+
+* 
+janus-key
 
 Copyright (C) 2021  Giulio Pietroiusti
 
