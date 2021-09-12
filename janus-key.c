@@ -99,22 +99,106 @@ static void timespec_add(struct timespec* a, struct timespec* b, struct timespec
 }
 
 // Post the EV_KEY event of code `code` and `value` through the
-// uninput device `*uinput_dev` and send a (EV_SYN, SYN_REPORT, 0)
-// event through that same device.
-static int send_key_ev_and_sync(const struct libevdev_uinput *uinput_dev, unsigned int code, int value)
+// uninput device `*uidev` and send a (EV_SYN, SYN_REPORT, 0) event
+// through that same device.
+static int send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned int code, int value)
 {
     int err;
 
-    err = libevdev_uinput_write_event(uinput_dev, EV_KEY, code, value);
+    err = libevdev_uinput_write_event(uidev, EV_KEY, code, value);
     if (err != 0)
 	return err;
-    err = libevdev_uinput_write_event(uinput_dev, EV_SYN, SYN_REPORT, 0);
+    err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
     if (err != 0)
 	return err;
     
     //printf("Sending %u %u\n", code, value);
 
     return 0;
+}
+
+static int handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
+    int i;
+    if ((i = is_in_janus_map(code)) >= 0) {
+	if (value == 1) {
+	    janus_map[i].state = 1;
+	    clock_gettime(CLOCK_MONOTONIC, &(janus_map[i].last_time_down));
+	    last_input_was_special_combination = 0;
+	} else if (value == 2) {
+	    janus_map[i].state = 1;
+	    last_input_was_special_combination = 0;
+	} else {
+	    janus_map[i].state = 0;
+	    clock_gettime(CLOCK_MONOTONIC, &now);
+	    if (some_jk_is_down_or_held() >= 0) {
+		timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
+		    if (last_input_was_special_combination) {
+			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+		    } else {
+			last_input_was_special_combination = 1;
+			for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+			    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+				send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
+			    }
+			}
+			send_key_ev_and_sync(uidev, janus_map[i].key, 1);
+			send_key_ev_and_sync(uidev, janus_map[i].key, 0);
+			for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+			    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+				send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 0);
+			    }
+			}
+		    }
+		} else {
+		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+		}
+	    } else {
+		timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
+		    if (last_input_was_special_combination) {
+			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+		    } else {
+			send_key_ev_and_sync(uidev, janus_map[i].key, 1);
+			send_key_ev_and_sync(uidev, janus_map[i].key, 0);
+			last_input_was_special_combination = 0; // sure?
+		    }
+		} else {
+		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+		}
+	    }
+	}
+    } else {
+	if (value == 1) {
+	    if (some_jk_is_down_or_held() >= 0) {
+		last_input_was_special_combination = 1;
+		for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+		    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+			send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
+		    }
+		}
+		send_key_ev_and_sync(uidev, code, 1);
+	    } else {
+		last_input_was_special_combination = 0;
+		send_key_ev_and_sync(uidev, code, 1);
+	    }
+	} else if (value == 2) {
+	    if (some_jk_is_down_or_held() >= 0) {
+		last_input_was_special_combination = 1;
+		for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+		    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+			send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
+		    }
+		}
+		send_key_ev_and_sync(uidev, code, 1);
+	    } else {
+		last_input_was_special_combination = 0;
+		send_key_ev_and_sync(uidev, code, 1);
+	    }
+	} else { // if (value == 0)
+	    send_key_ev_and_sync(uidev, code, 0);
+	}
+    }
 }
 
 /* 
@@ -297,87 +381,7 @@ main(int argc, char **argv)
 	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
 	    //print_event(&ev);
 	    if (ev.type == EV_KEY) {
-		int i;
-		if ((i = is_in_janus_map(ev.code)) >= 0) {
-		    if (ev.value == 1) {
-			janus_map[i].state = 1;
-			clock_gettime(CLOCK_MONOTONIC, &(janus_map[i].last_time_down));
-			last_input_was_special_combination = 0;
-		    } else if (ev.value == 2) {
-			janus_map[i].state = 1;
-			last_input_was_special_combination = 0;
-		    } else {
-			janus_map[i].state = 0;
-			clock_gettime(CLOCK_MONOTONIC, &now);
-			if (some_jk_is_down_or_held() >= 0) {
-			    timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
-			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
-				if (last_input_was_special_combination) {
-				    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
-				} else {
-				    last_input_was_special_combination = 1;
-				    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-					if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-					    send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
-					}
-				    }
-				    send_key_ev_and_sync(uidev, janus_map[i].key, 1);
-				    send_key_ev_and_sync(uidev, janus_map[i].key, 0);
-				    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-					if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-					    send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 0);
-					}
-				    }
-				}
-			    } else {
-				send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
-			    }
-			} else {
-			    timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
-			    if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
-				if (last_input_was_special_combination) {
-				    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
-				} else {
-				    send_key_ev_and_sync(uidev, janus_map[i].key, 1);
-				    send_key_ev_and_sync(uidev, janus_map[i].key, 0);
-				    last_input_was_special_combination = 0; // sure?
-				}
-			    } else {
-				send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
-			    }
-			}
-		    }
-		} else {
-		    if (ev.value == 1) {
-			if (some_jk_is_down_or_held() >= 0) {
-			    last_input_was_special_combination = 1;
-			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-				    send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
-				}
-			    }
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			} else {
-			    last_input_was_special_combination = 0;
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			}
-		    } else if (ev.value == 2) {
-			if (some_jk_is_down_or_held() >= 0) {
-			    last_input_was_special_combination = 1;
-			    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-				if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-				    send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
-				}
-			    }
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			} else {
-			    last_input_was_special_combination = 0;
-			    send_key_ev_and_sync(uidev, ev.code, 1);
-			}
-		    } else { // if (ev.value == 0)
-			send_key_ev_and_sync(uidev, ev.code, 0);
-		    }
-		}
+		handle_ev_key_event(uidev, ev.code, ev.value);
 	    }
 	}
     } while (rc == LIBEVDEV_READ_STATUS_SYNC || rc == LIBEVDEV_READ_STATUS_SUCCESS || rc == -EAGAIN);
