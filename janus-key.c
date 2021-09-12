@@ -119,6 +119,14 @@ static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned i
     //printf("Sending %u %u\n", code, value);
 }
 
+// For each janus key down or held send an EV_KEY event with its
+// secondary function code and value `value`.
+static void send_down_or_held_jks_secondary_function(const struct libevdev_uinput *uidev, int value) {
+    for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
+	if (janus_map[j].state == 1 || janus_map[j].state == 2) {
+	    send_key_ev_and_sync(uidev, janus_map[j].secondary_function, value);
+	}
+    }
 }
 
 static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
@@ -141,18 +149,10 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
 		    } else {
 			last_input_was_special_combination = 1;
-			for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-			    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-				send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
-			    }
-			}
+			send_down_or_held_jks_secondary_function(uidev, 1);
 			send_key_ev_and_sync(uidev, janus_map[i].key, 1);
 			send_key_ev_and_sync(uidev, janus_map[i].key, 0);
-			for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-			    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-				send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 0);
-			    }
-			}
+			send_down_or_held_jks_secondary_function(uidev, 0);
 		    }
 		} else {
 		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
@@ -176,11 +176,7 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 	if (value == 1) {
 	    if (some_jk_is_down_or_held() >= 0) {
 		last_input_was_special_combination = 1;
-		for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-		    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-			send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
-		    }
-		}
+		send_down_or_held_jks_secondary_function(uidev, 1);
 		send_key_ev_and_sync(uidev, code, 1);
 	    } else {
 		last_input_was_special_combination = 0;
@@ -189,11 +185,7 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 	} else if (value == 2) {
 	    if (some_jk_is_down_or_held() >= 0) {
 		last_input_was_special_combination = 1;
-		for (int j = 0; j < sizeof(janus_map)/sizeof(janus_map[0]); j++) {
-		    if (janus_map[j].state == 1 || janus_map[j].state == 2) {
-			send_key_ev_and_sync(uidev, janus_map[j].secondary_function, 1);
-		    }
-		}
+		send_down_or_held_jks_secondary_function(uidev, 1);
 		send_key_ev_and_sync(uidev, code, 1);
 	    } else {
 		last_input_was_special_combination = 0;
