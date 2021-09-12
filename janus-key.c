@@ -130,11 +130,10 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
 }
 
 static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
-    int i;
-    if ((i = is_in_janus_map(code)) >= 0) {
+    if (is_in_janus_map(code) >= 0) {
 	if (value == 1) {
 	    janus_map[i].state = 1;
-	    clock_gettime(CLOCK_MONOTONIC, &(janus_map[i].last_time_down));
+	    clock_gettime(CLOCK_MONOTONIC, &janus_map[i].last_time_down);
 	    last_input_was_special_combination = 0;
 	} else if (value == 2) {
 	    janus_map[i].state = 1;
@@ -143,7 +142,7 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 	    janus_map[i].state = 0;
 	    clock_gettime(CLOCK_MONOTONIC, &now);
 	    if (some_jk_is_down_or_held() >= 0) {
-		timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+		timespec_add(&janus_map[i].last_time_down, &tp_max_delay, &tp_sum);
 		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
 		    if (last_input_was_special_combination) {
 			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
@@ -158,7 +157,7 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
 		}
 	    } else {
-		timespec_add(&(janus_map[i].last_time_down), &tp_max_delay, &tp_sum);
+		timespec_add(&janus_map[i].last_time_down, &tp_max_delay, &tp_sum);
 		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
 		    if (last_input_was_special_combination) {
 			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
