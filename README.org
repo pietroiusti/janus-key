@@ -4,7 +4,7 @@ held down.
 
 Hence janus-key allows you to use normal keys as modifiers (CTRL, ALT,
 etc.). Emacs users can use it to keep their pinky healthy without
-indulging in the keybindings of the beast.
+indulging in the [[https://en.wikipedia.org/wiki/Editor_war#Humor][keybindings of the beast]].
 
 janus-key sits at a [[https://www.freedesktop.org/software/libevdev/doc/latest/][relatively low level]], so it can be combined with
 other standard remapping tools that operate at a higher level.
