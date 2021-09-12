@@ -40,7 +40,7 @@
 
 int last_input_was_special_combination = 0;
 
-// store delay into timespec struct
+// store delay value given by user into timespec struct
 struct timespec tp_max_delay;
 
 // For calculating delay
@@ -101,23 +101,27 @@ static void timespec_add(struct timespec* a, struct timespec* b, struct timespec
 // Post the EV_KEY event of code `code` and `value` through the
 // uninput device `*uidev` and send a (EV_SYN, SYN_REPORT, 0) event
 // through that same device.
-static int send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned int code, int value)
+static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned int code, int value)
 {
     int err;
 
     err = libevdev_uinput_write_event(uidev, EV_KEY, code, value);
-    if (err != 0)
-	return err;
+    if (err != 0) {
+	perror("Error in writing EV_KEY event");
+	exit(err);
+    }
     err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
-    if (err != 0)
-	return err;
+    if (err != 0) {
+	perror("Error in writing EV_SYN, SYN_REPORT, 0.\n");
+	exit(err);
+    }
     
     //printf("Sending %u %u\n", code, value);
-
-    return 0;
 }
 
-static int handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
+}
+
+static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
     int i;
     if ((i = is_in_janus_map(code)) >= 0) {
 	if (value == 1) {
