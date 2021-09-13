@@ -13,12 +13,12 @@ other standard remapping tools that operate at a higher level.
 Install *libevdev* on your system if you have not already.
 
 * Configuration
-Edit config.h
+Edit the janus_map in config.h
 
 In order to know what the names of the keys of a certain device are
 you can use *evtest*.
 
-In the default configuration, CAPSLOCK and ENTER are assigned CTRL as
+In the default configuration, CAPSLOCK and ENTER are assigned ALT as
 their secondary function.
 
 * Compile and run

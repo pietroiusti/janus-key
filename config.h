@@ -10,8 +10,8 @@ typedef struct {
 
 janus_key janus_map[] = {
     // Key                   Secondary Function
-    {  KEY_CAPSLOCK,         KEY_LEFTMETA    },
-    {  KEY_ENTER,            KEY_RIGHTMETA   },
+    {  KEY_CAPSLOCK,         KEY_LEFTALT     },
+    {  KEY_ENTER,            KEY_RIGHTALT    },
 };
 
 // Delay in milliseconds.

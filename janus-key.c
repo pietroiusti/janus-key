@@ -146,7 +146,7 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 		timespec_add(&janus_map[i].last_time_down, &tp_max_delay, &tp_sum);
 		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
 		    if (last_input_was_special_combination) {
-			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0);
 		    } else {
 			last_input_was_special_combination = 1;
 			send_down_or_held_jks_secondary_function(uidev, 1);
@@ -155,20 +155,20 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 			send_down_or_held_jks_secondary_function(uidev, 0);
 		    }
 		} else {
-		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0);
 		}
 	    } else {
 		timespec_add(&janus_map[i].last_time_down, &tp_max_delay, &tp_sum);
 		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - janus_map[i].last_time_down < max_delay
 		    if (last_input_was_special_combination) {
-			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0);
 		    } else {
 			send_key_ev_and_sync(uidev, janus_map[i].key, 1);
 			send_key_ev_and_sync(uidev, janus_map[i].key, 0);
-			last_input_was_special_combination = 0; // sure?
+			last_input_was_special_combination = 0;
 		    }
 		} else {
-		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0); // send 0 defensively?
+		    send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0);
 		}
 	    }
 	}
@@ -205,80 +205,6 @@ SPDX-License-Identifier: MIT
 Copyright © 2013 Red Hat, Inc.
 */
 
-static void
-print_abs_bits(struct libevdev *dev, int axis)
-{
-    const struct input_absinfo *abs;
-
-    if (!libevdev_has_event_code(dev, EV_ABS, axis))
-	return;
-
-    abs = libevdev_get_abs_info(dev, axis);
-
-    printf("	Value	%6d\n", abs->value);
-    printf("	Min	%6d\n", abs->minimum);
-    printf("	Max	%6d\n", abs->maximum);
-    if (abs->fuzz)
-	printf("	Fuzz	%6d\n", abs->fuzz);
-    if (abs->flat)
-	printf("	Flat	%6d\n", abs->flat);
-    if (abs->resolution)
-	printf("	Resolution	%6d\n", abs->resolution);
-}
-
-static void
-print_code_bits(struct libevdev *dev, unsigned int type, unsigned int max)
-{
-    unsigned int i;
-    for (i = 0; i <= max; i++) {
-	if (!libevdev_has_event_code(dev, type, i))
-	    continue;
-
-	printf("    Event code %i (%s)\n", i, libevdev_event_code_get_name(type, i));
-	if (type == EV_ABS)
-	    print_abs_bits(dev, i);
-    }
-}
-
-static void
-print_bits(struct libevdev *dev)
-{
-    unsigned int i;
-    printf("Supported events:\n");
-
-    for (i = 0; i <= EV_MAX; i++) {
-	if (libevdev_has_event_type(dev, i))
-	    printf("  Event type %d (%s)\n", i, libevdev_event_type_get_name(i));
-	switch(i) {
-	case EV_KEY:
-	    print_code_bits(dev, EV_KEY, KEY_MAX);
-	    break;
-	case EV_REL:
-	    print_code_bits(dev, EV_REL, REL_MAX);
-	    break;
-	case EV_ABS:
-	    print_code_bits(dev, EV_ABS, ABS_MAX);
-	    break;
-	case EV_LED:
-	    print_code_bits(dev, EV_LED, LED_MAX);
-	    break;
-	}
-    }
-}
-
-static void
-print_props(struct libevdev *dev)
-{
-    unsigned int i;
-    printf("Properties:\n");
-
-    for (i = 0; i <= INPUT_PROP_MAX; i++) {
-	if (libevdev_has_property(dev, i))
-	    printf("  Property type %d (%s)\n", i,
-		   libevdev_property_get_name(i));
-    }
-}
-
 static int
 print_event(struct input_event *ev)
 {
@@ -313,7 +239,6 @@ END functions from libevdev-1.11.0/tools/libevdev-events.c
 ********************************************************************************
 */
 
-
 int
 main(int argc, char **argv)
 {
@@ -328,8 +253,8 @@ main(int argc, char **argv)
     if (argc < 2)
 	goto out;
 
-    //sleep(1);
-    usleep(500000); //sleep for half a second
+    usleep(100000); // let (KEY_ENTER), value 0 go through before
+		    // grabbing the device
 
     file = argv[1];
     fd = open(file, O_RDONLY);
@@ -375,7 +300,7 @@ main(int argc, char **argv)
 	    }
 	    printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
 	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-	    //print_event(&ev);
+	    print_event(&ev);
 	    if (ev.type == EV_KEY) {
 		handle_ev_key_event(uidev, ev.code, ev.value);
 	    }
