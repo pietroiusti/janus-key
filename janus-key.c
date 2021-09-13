@@ -300,7 +300,7 @@ main(int argc, char **argv)
 	    }
 	    printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
 	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-	    print_event(&ev);
+	    //print_event(&ev);
 	    if (ev.type == EV_KEY) {
 		handle_ev_key_event(uidev, ev.code, ev.value);
 	    }
