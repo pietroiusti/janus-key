@@ -130,7 +130,8 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
 }
 
 static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
-    if (is_in_janus_map(code) >= 0) {
+    int i = is_in_janus_map(code);
+    if (i >= 0) {
 	if (value == 1) {
 	    janus_map[i].state = 1;
 	    clock_gettime(CLOCK_MONOTONIC, &janus_map[i].last_time_down);
