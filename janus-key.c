@@ -129,6 +129,29 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
     }
 }
 
+// just a temporary test (remapping only a couple of keys)
+static void send_primary_function(const struct libevdev_uinput *uidev, unsigned int code, int value) {
+    if (code == KEY_RIGHTALT) {
+	send_key_ev_and_sync(uidev, KEY_RIGHTCTRL, value);
+    } else if (code == KEY_LEFTALT) {
+	send_key_ev_and_sync(uidev, KEY_LEFTCTRL, value);
+    } else if (code == KEY_LEFTMETA) {
+	send_key_ev_and_sync(uidev, KEY_LEFTALT, value);
+    } else if (code == KEY_RIGHTMETA) {
+	send_key_ev_and_sync(uidev, KEY_LEFTALT, value);
+    } else if (code == KEY_LEFTCTRL) {
+	send_key_ev_and_sync(uidev, KEY_LEFTMETA, value);
+    } else if (code == KEY_COMPOSE) {
+	send_key_ev_and_sync(uidev, KEY_RIGHTMETA, value);
+    } else if (code == KEY_CAPSLOCK) {
+	send_key_ev_and_sync(uidev, KEY_ESC, value);
+    } else if (code == KEY_A) {
+	send_key_ev_and_sync(uidev, KEY_B, value);
+    } else {
+	send_key_ev_and_sync(uidev, code, value);
+    }
+}
+
 static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
     int i = is_in_janus_map(code);
     if (i >= 0) {
@@ -150,8 +173,12 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 		    } else {
 			last_input_was_special_combination = 1;
 			send_down_or_held_jks_secondary_function(uidev, 1);
-			send_key_ev_and_sync(uidev, janus_map[i].key, 1);
-			send_key_ev_and_sync(uidev, janus_map[i].key, 0);
+
+			//send_key_ev_and_sync(uidev, janus_map[i].key, 1);
+			//send_key_ev_and_sync(uidev, janus_map[i].key, 0);
+			send_primary_function(uidev, janus_map[i].key, 1);
+			send_primary_function(uidev, janus_map[i].key, 0);
+
 			send_down_or_held_jks_secondary_function(uidev, 0);
 		    }
 		} else {
@@ -163,8 +190,11 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 		    if (last_input_was_special_combination) {
 			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0);
 		    } else {
-			send_key_ev_and_sync(uidev, janus_map[i].key, 1);
-			send_key_ev_and_sync(uidev, janus_map[i].key, 0);
+			//send_key_ev_and_sync(uidev, janus_map[i].key, 1);
+			//send_key_ev_and_sync(uidev, janus_map[i].key, 0);
+			send_primary_function(uidev, janus_map[i].key, 1);
+			send_primary_function(uidev, janus_map[i].key, 0);
+
 			last_input_was_special_combination = 0;
 		    }
 		} else {
@@ -177,22 +207,27 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 	    if (some_jk_is_down_or_held() >= 0) {
 		last_input_was_special_combination = 1;
 		send_down_or_held_jks_secondary_function(uidev, 1);
-		send_key_ev_and_sync(uidev, code, 1);
+		//send_key_ev_and_sync(uidev, code, 1);
+		send_primary_function(uidev, code, 1);
 	    } else {
 		last_input_was_special_combination = 0;
-		send_key_ev_and_sync(uidev, code, 1);
+		//send_key_ev_and_sync(uidev, code, 1);
+		send_primary_function(uidev, code, 1);
 	    }
 	} else if (value == 2) {
 	    if (some_jk_is_down_or_held() >= 0) {
 		last_input_was_special_combination = 1;
 		send_down_or_held_jks_secondary_function(uidev, 1);
-		send_key_ev_and_sync(uidev, code, 1);
+		//send_key_ev_and_sync(uidev, code, 1);
+		send_primary_function(uidev, code, 1);
 	    } else {
 		last_input_was_special_combination = 0;
-		send_key_ev_and_sync(uidev, code, 1);
+		//send_key_ev_and_sync(uidev, code, 1);
+		send_primary_function(uidev, code, 1);
 	    }
 	} else { // if (value == 0)
-	    send_key_ev_and_sync(uidev, code, 0);
+	    //send_key_ev_and_sync(uidev, code, 0);
+	    send_primary_function(uidev, code, 0);
 	}
     }
 }
