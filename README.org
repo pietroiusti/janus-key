@@ -1,13 +1,15 @@
-janus-key assigns to keys a secondary function so that they act in
-their normal way when pressed and released, but in another way when
-held down.
+janus-key is not only able to remap keys, but it can also assign to
+them a secondary function, so that they behave in one way pressed and
+released and in another way when held down.
 
 Hence janus-key allows you to use normal keys as modifiers (CTRL, ALT,
 etc.). Emacs users can use it to keep their pinky healthy without
 indulging in the [[https://en.wikipedia.org/wiki/Editor_war#Humor][keybindings of the beast]].
 
-janus-key sits at a [[https://www.freedesktop.org/software/libevdev/doc/latest/][relatively low level]], so it can be combined with
-other standard remapping tools that operate at a higher level.
+janus-key sits at a [[https://www.freedesktop.org/software/libevdev/doc/latest/][relatively low level]], so it works regardless of
+whether you are using X, Wayland or neither.
+
+Configuring janus-key is extremely simple.
 
 * Dependencies
 Install *libevdev* on your system if you have not already.
@@ -15,11 +17,29 @@ Install *libevdev* on your system if you have not already.
 * Configuration
 Edit the janus_map in config.h
 
-In order to know what the names of the keys of a certain device are
-you can use *evtest*.
+For example, the following simply turns ESC into CAPSLOCK:
+#+begin_src C
+  {  KEY_ESC,           KEY_CAPSLOCK  }
+#+end_src
 
-In the default configuration, CAPSLOCK and ENTER are assigned ALT as
-their secondary function.
+The following makes ENTER behave as RIGHTALT when held down, leaving
+untouched ENTER's behaviour when pressed and released:
+#+begin_src C
+  {  KEY_ENTER,         0,               KEY_RIGHTALT    }
+#+end_src
+
+The following changes both CAPSLOCK's primary function and secondary
+function, so that it behaves as ESC when pressed and released, but as
+LEFTALT when held down:
+#+begin_src C
+  {  KEY_CAPSLOCK,      KEY_ESC,         KEY_LEFTALT     }
+#+end_src
+
+You can find the names of the keys of a certain device by using
+*evtest*.
+
+You can also change the value of max_delay (see the config.h file for
+info).
 
 * Compile and run
 Compile with

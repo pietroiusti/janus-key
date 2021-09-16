@@ -29,14 +29,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include "libevdev/libevdev.h"
-
-#include "libevdev/libevdev-uinput.h"
-
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>
+
+#include "libevdev/libevdev.h"
+#include "libevdev/libevdev-uinput.h"
 
 int last_input_was_special_combination = 0;
 
@@ -116,7 +114,7 @@ static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned i
 
     err = libevdev_uinput_write_event(uidev, EV_KEY, code, value);
     if (err != 0) {
-	perror("Error in writing EV_KEY event");
+	perror("Error in writing EV_KEY event\n");
 	exit(err);
     }
     err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
@@ -138,37 +136,19 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
     }
 }
 
+// Post throught uidev, with value `value, the primary function
+// associated of `code`.
 static void send_primary_function(const struct libevdev_uinput *uidev, unsigned int code, int value) {
     int i = is_in_janus_map(code);
     if (i >= 0) {
-	send_key_ev_and_sync(uidev, janus_map[i].primary_function, value);
+	unsigned int primary_function = janus_map[i].primary_function > 0 ? janus_map[i].primary_function : janus_map[i].key;
+	send_key_ev_and_sync(uidev, primary_function, value);
     } else {
 	send_key_ev_and_sync(uidev, code, value);
     }
-    /* if (code == KEY_RIGHTALT) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_RIGHTCTRL, value); */
-    /* } else if (code == KEY_LEFTALT) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_LEFTCTRL, value); */
-    /* } else if (code == KEY_LEFTMETA) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_LEFTALT, value); */
-    /* } else if (code == KEY_RIGHTMETA) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_LEFTALT, value); */
-    /* } else if (code == KEY_LEFTCTRL) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_LEFTMETA, value); */
-    /* } else if (code == KEY_COMPOSE) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_RIGHTMETA, value); */
-    /* } else if (code == KEY_CAPSLOCK) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_ESC, value); */
-    /* } else if (code == KEY_ESC) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_CAPSLOCK, value); */
-    /* } else if (code == KEY_A) { */
-    /* 	send_key_ev_and_sync(uidev, KEY_A, value); */
-    /* } else { */
-    /* 	send_key_ev_and_sync(uidev, code, value); */
-    /* } */
 }
 
-static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
+static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code, int value) {
     int i = is_janus_key(code);
     if (i >= 0) {
 	if (value == 1) {
@@ -189,12 +169,8 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 		    } else {
 			last_input_was_special_combination = 1;
 			send_down_or_held_jks_secondary_function(uidev, 1);
-
-			//send_key_ev_and_sync(uidev, janus_map[i].key, 1);
-			//send_key_ev_and_sync(uidev, janus_map[i].key, 0);
 			send_primary_function(uidev, janus_map[i].key, 1);
 			send_primary_function(uidev, janus_map[i].key, 0);
-
 			send_down_or_held_jks_secondary_function(uidev, 0);
 		    }
 		} else {
@@ -206,11 +182,8 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 		    if (last_input_was_special_combination) {
 			send_key_ev_and_sync(uidev, janus_map[i].secondary_function, 0);
 		    } else {
-			//send_key_ev_and_sync(uidev, janus_map[i].key, 1);
-			//send_key_ev_and_sync(uidev, janus_map[i].key, 0);
 			send_primary_function(uidev, janus_map[i].key, 1);
 			send_primary_function(uidev, janus_map[i].key, 0);
-
 			last_input_was_special_combination = 0;
 		    }
 		} else {
@@ -223,26 +196,21 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
 	    if (some_jk_is_down_or_held() >= 0) {
 		last_input_was_special_combination = 1;
 		send_down_or_held_jks_secondary_function(uidev, 1);
-		//send_key_ev_and_sync(uidev, code, 1);
 		send_primary_function(uidev, code, 1);
 	    } else {
 		last_input_was_special_combination = 0;
-		//send_key_ev_and_sync(uidev, code, 1);
 		send_primary_function(uidev, code, 1);
 	    }
 	} else if (value == 2) {
 	    if (some_jk_is_down_or_held() >= 0) {
 		last_input_was_special_combination = 1;
 		send_down_or_held_jks_secondary_function(uidev, 1);
-		//send_key_ev_and_sync(uidev, code, 1);
 		send_primary_function(uidev, code, 1);
 	    } else {
 		last_input_was_special_combination = 0;
-		//send_key_ev_and_sync(uidev, code, 1);
 		send_primary_function(uidev, code, 1);
 	    }
 	} else { // if (value == 0)
-	    //send_key_ev_and_sync(uidev, code, 0);
 	    send_primary_function(uidev, code, 0);
 	}
     }
@@ -310,7 +278,7 @@ main(int argc, char **argv)
     file = argv[1];
     fd = open(file, O_RDONLY);
     if (fd < 0) {
-	perror("Failed to open device");
+	perror("Failed to open device\n");
 	goto out;
     }
 
@@ -353,7 +321,7 @@ main(int argc, char **argv)
 	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
 	    //print_event(&ev);
 	    if (ev.type == EV_KEY) {
-		handle_ev_key_event(uidev, ev.code, ev.value);
+		handle_ev_key(uidev, ev.code, ev.value);
 	    }
 	}
     } while (rc == LIBEVDEV_READ_STATUS_SYNC || rc == LIBEVDEV_READ_STATUS_SUCCESS || rc == -EAGAIN);
