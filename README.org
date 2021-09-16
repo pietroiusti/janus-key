@@ -1,5 +1,5 @@
-janus-key is not only able to remap keys, but it can also assign to
-them a secondary function, so that they behave in one way pressed and
+janus-key, besides standard key remapping, can assign to keys a
+secondary function, so that they behave in one way when pressed and
 released and in another way when held down.
 
 Hence janus-key allows you to use normal keys as modifiers (CTRL, ALT,
