@@ -70,6 +70,15 @@ static int is_in_janus_map(unsigned int key) {
     return -1;
 };
 
+// If `key` has a secondary function return its index. Otherwise return -1.
+static int is_janus_key(unsigned int key) {
+    int i = is_in_janus_map(key);
+    if (i >= 0)
+	if (janus_map[i].secondary_function > 0)
+	    return i;
+    return -1;
+}
+
 // Compare two timespec structs.
 // Return -1 if *tp1 < *tp2, 0 if *tp1 == *tp2, 1 if *tp1 < *tp2
 static int timespec_cmp(struct timespec *tp1, struct timespec *tp2) {
@@ -129,33 +138,38 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
     }
 }
 
-// just a temporary test (remapping only a couple of keys)
 static void send_primary_function(const struct libevdev_uinput *uidev, unsigned int code, int value) {
-    if (code == KEY_RIGHTALT) {
-	send_key_ev_and_sync(uidev, KEY_RIGHTCTRL, value);
-    } else if (code == KEY_LEFTALT) {
-	send_key_ev_and_sync(uidev, KEY_LEFTCTRL, value);
-    } else if (code == KEY_LEFTMETA) {
-	send_key_ev_and_sync(uidev, KEY_LEFTALT, value);
-    } else if (code == KEY_RIGHTMETA) {
-	send_key_ev_and_sync(uidev, KEY_LEFTALT, value);
-    } else if (code == KEY_LEFTCTRL) {
-	send_key_ev_and_sync(uidev, KEY_LEFTMETA, value);
-    } else if (code == KEY_COMPOSE) {
-	send_key_ev_and_sync(uidev, KEY_RIGHTMETA, value);
-    } else if (code == KEY_CAPSLOCK) {
-	send_key_ev_and_sync(uidev, KEY_ESC, value);
-    } else if (code == KEY_ESC) {
-	send_key_ev_and_sync(uidev, KEY_CAPSLOCK, value);
-    } else if (code == KEY_A) {
-	send_key_ev_and_sync(uidev, KEY_A, value);
+    int i = is_in_janus_map(code);
+    if (i >= 0) {
+	send_key_ev_and_sync(uidev, janus_map[i].primary_function, value);
     } else {
 	send_key_ev_and_sync(uidev, code, value);
     }
+    /* if (code == KEY_RIGHTALT) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_RIGHTCTRL, value); */
+    /* } else if (code == KEY_LEFTALT) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_LEFTCTRL, value); */
+    /* } else if (code == KEY_LEFTMETA) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_LEFTALT, value); */
+    /* } else if (code == KEY_RIGHTMETA) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_LEFTALT, value); */
+    /* } else if (code == KEY_LEFTCTRL) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_LEFTMETA, value); */
+    /* } else if (code == KEY_COMPOSE) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_RIGHTMETA, value); */
+    /* } else if (code == KEY_CAPSLOCK) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_ESC, value); */
+    /* } else if (code == KEY_ESC) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_CAPSLOCK, value); */
+    /* } else if (code == KEY_A) { */
+    /* 	send_key_ev_and_sync(uidev, KEY_A, value); */
+    /* } else { */
+    /* 	send_key_ev_and_sync(uidev, code, value); */
+    /* } */
 }
 
 static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned int code, int value) {
-    int i = is_in_janus_map(code);
+    int i = is_janus_key(code);
     if (i >= 0) {
 	if (value == 1) {
 	    janus_map[i].state = 1;
@@ -234,7 +248,7 @@ static void handle_ev_key_event(const struct libevdev_uinput *uidev, unsigned in
     }
 }
 
-/* 
+/*
 ********************************************************************************
 BEGIN functions from libevdev-1.11.0/tools/libevdev-events.c
 ********************************************************************************
