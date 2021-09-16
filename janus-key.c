@@ -146,7 +146,7 @@ static void send_primary_function(const struct libevdev_uinput *uidev, unsigned 
     } else if (code == KEY_CAPSLOCK) {
 	send_key_ev_and_sync(uidev, KEY_ESC, value);
     } else if (code == KEY_A) {
-	send_key_ev_and_sync(uidev, KEY_B, value);
+	send_key_ev_and_sync(uidev, KEY_A, value);
     } else {
 	send_key_ev_and_sync(uidev, code, value);
     }
