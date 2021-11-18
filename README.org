@@ -12,7 +12,7 @@ Configuration is simple.
 * Possible usages
 - Turning normal keys (e.g. CAPSLOCK or ENTER) into modifiers
   (e.g. CTRL or ALT) when held down. Emacs users, for example, can do
-  so to keep their pinky healthy without indulging in the [[https://en.wikipedia.org/wiki/Editor_war#Humor][keybindings
+  so to keep their pinkie healthy without indulging in the [[https://en.wikipedia.org/wiki/Editor_war#Humor][keybindings
   of the beast]].
 - Turning modifiers into normal keys when pressed and
   released. Vim/evil users, for example, can do so to exit insert mode
