@@ -1,3 +1,5 @@
+#+title: janus-key
+
 janus-key provides keys with a secondary function, so that they send
 one input when pressed and released, but another input when held down
 and used in combination with other keys.
