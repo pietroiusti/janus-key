@@ -54,7 +54,7 @@ the config.h file for info).
 * Compile and run
 Compile with
 #+begin_src
-gcc `pkg-config --cflags libevdev` `pkg-config --libs libevdev` janus-key.c -o janus-key
+gcc `pkg-config --cflags libevdev` janus-key.c `pkg-config --libs libevdev` -o janus-key
 #+end_src
 
 Run
