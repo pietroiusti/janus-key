@@ -42,8 +42,6 @@ int last_input_was_special_combination = 0;
 struct timespec tp_max_delay;
 
 // For calculating delay
-struct timespec mod1_last_time_down;
-struct timespec mod2_last_time_down;
 struct timespec now;
 struct timespec tp_sum;
 
