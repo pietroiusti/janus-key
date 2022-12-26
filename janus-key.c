@@ -2,7 +2,7 @@
   
     janus-key. Give keys a double function.
 
-    Copyright (C) 2021  Giulio Pietroiusti
+    Copyright (C) 2021, 2022  Giulio Pietroiusti
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 */
+
+// `janus keys`: those keys that have beeen assigned a secondary
+//  function.
 
 #include "./config.h"
 
@@ -56,7 +59,8 @@ static int some_jk_are_down_or_held() {
     return -1;
 }
 
-// If `key` is in the mod_map return its index. Otherwise return -1.
+// If `key` is in the mod_map, then return its index. Otherwise return
+// -1.
 static int is_in_mod_map(unsigned int key) {
     size_t length = sizeof(mod_map)/sizeof(mod_map[0]);
     for (int i = 0; i < length; i++) {
@@ -66,8 +70,8 @@ static int is_in_mod_map(unsigned int key) {
     return -1;
 };
 
-// If `key` is a janus key (that is, it has been assigned a secondary
-// function) return its index. Otherwise return -1.
+// If `key` is a janus key, then return its index. Otherwise return
+// -1.
 static int is_janus(unsigned int key) {
     int i = is_in_mod_map(key);
     if (i >= 0)

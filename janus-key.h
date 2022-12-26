@@ -11,16 +11,3 @@ typedef struct {
     unsigned int state;
     struct timespec last_time_down;
 } mod_key;
-
-// Output of a combination of keys.
-typedef struct {
-    unsigned int key1;
-    unsigned int key2;
-} output;
-
-// Combination of keys.
-typedef struct {
-    unsigned int key1;
-    unsigned int key2;
-    output combo;
-} combo;
