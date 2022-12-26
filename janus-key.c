@@ -50,8 +50,8 @@ struct timespec tp_sum;
 static int some_jk_are_down_or_held() {
     size_t length = sizeof(mod_map)/sizeof(mod_map[0]);
     for (int i = 0; i < length; i++) {
-	if (mod_map[i].state == 1 || mod_map[i].state == 2 && mod_map[i].secondary_function > 0)
-	    return i;
+        if (mod_map[i].state == 1 || mod_map[i].state == 2 && mod_map[i].secondary_function > 0)
+            return i;
     }
     return -1;
 }
@@ -60,8 +60,8 @@ static int some_jk_are_down_or_held() {
 static int is_in_mod_map(unsigned int key) {
     size_t length = sizeof(mod_map)/sizeof(mod_map[0]);
     for (int i = 0; i < length; i++) {
-	if (mod_map[i].key == key)
-	    return i;
+        if (mod_map[i].key == key)
+            return i;
     }
     return -1;
 };
@@ -71,8 +71,8 @@ static int is_in_mod_map(unsigned int key) {
 static int is_janus(unsigned int key) {
     int i = is_in_mod_map(key);
     if (i >= 0)
-	if (mod_map[i].secondary_function > 0)
-	    return i;
+        if (mod_map[i].secondary_function > 0)
+            return i;
     return -1;
 }
 
@@ -80,17 +80,17 @@ static int is_janus(unsigned int key) {
 // Return -1 if *tp1 < *tp2, 0 if *tp1 == *tp2, 1 if *tp1 < *tp2
 static int timespec_cmp(struct timespec *tp1, struct timespec *tp2) {
     if (tp1->tv_sec > tp2->tv_sec) {
-	return -1;
+        return -1;
     }
     else if (tp1->tv_sec < tp2->tv_sec) {
-	return 1;
+        return 1;
     } else { // tp1->tv_sec == tp2->tv_sec
-	if (tp1->tv_nsec > tp2->tv_nsec)
-	    return -1;
-	else if (tp1->tv_nsec < tp2->tv_nsec)
-	    return 1;
-	else
-	    return 0;
+        if (tp1->tv_nsec > tp2->tv_nsec)
+            return -1;
+        else if (tp1->tv_nsec < tp2->tv_nsec)
+            return 1;
+        else
+            return 0;
     }
 }
 
@@ -99,8 +99,8 @@ static void timespec_add(struct timespec* a, struct timespec* b, struct timespec
     c->tv_sec = a->tv_sec + b->tv_sec;
     c->tv_nsec = a->tv_nsec + b->tv_nsec;
     if (c->tv_nsec >= 1000000000) { // overflow
-	c->tv_nsec -= 1000000000;
-	c->tv_sec++;
+        c->tv_nsec -= 1000000000;
+        c->tv_sec++;
     }
 }
 
@@ -113,13 +113,13 @@ static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned i
 
     err = libevdev_uinput_write_event(uidev, EV_KEY, code, value);
     if (err != 0) {
-	perror("Error in writing EV_KEY event\n");
-	exit(err);
+        perror("Error in writing EV_KEY event\n");
+        exit(err);
     }
     err = libevdev_uinput_write_event(uidev, EV_SYN, SYN_REPORT, 0);
     if (err != 0) {
-	perror("Error in writing EV_SYN, SYN_REPORT, 0.\n");
-	exit(err);
+        perror("Error in writing EV_SYN, SYN_REPORT, 0.\n");
+        exit(err);
     }
     
     //printf("Sending %u %u\n", code, value);
@@ -129,9 +129,9 @@ static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned i
 // secondary function code and value `value`.
 static void send_down_or_held_jks_secondary_function(const struct libevdev_uinput *uidev, int value) {
     for (int j = 0; j < sizeof(mod_map)/sizeof(mod_map[0]); j++) {
-	if (mod_map[j].state == 1 || mod_map[j].state == 2 && mod_map[j].secondary_function > 0)  {
-	    send_key_ev_and_sync(uidev, mod_map[j].secondary_function, value);
-	}
+        if (mod_map[j].state == 1 || mod_map[j].state == 2 && mod_map[j].secondary_function > 0)  {
+            send_key_ev_and_sync(uidev, mod_map[j].secondary_function, value);
+        }
     }
 }
 
@@ -140,10 +140,10 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
 static void send_primary_function(const struct libevdev_uinput *uidev, unsigned int code, int value) {
     int i = is_in_mod_map(code);
     if (i >= 0) {
-	unsigned int primary_function = mod_map[i].primary_function > 0 ? mod_map[i].primary_function : mod_map[i].key;
-	send_key_ev_and_sync(uidev, primary_function, value);
+        unsigned int primary_function = mod_map[i].primary_function > 0 ? mod_map[i].primary_function : mod_map[i].key;
+        send_key_ev_and_sync(uidev, primary_function, value);
     } else {
-	send_key_ev_and_sync(uidev, code, value);
+        send_key_ev_and_sync(uidev, code, value);
     }
 }
 
@@ -151,71 +151,71 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
     int i = is_janus(code);
     if (i >= 0) {
         //printf("is_janus\n");
-	if (value == 1) {
-	    mod_map[i].state = 1;
-	    clock_gettime(CLOCK_MONOTONIC, &mod_map[i].last_time_down);
-	    last_input_was_special_combination = 0;
-	} else if (value == 2) {
-	    mod_map[i].state = 1;
-	    last_input_was_special_combination = 0;
-	} else {
-	    mod_map[i].state = 0;
-	    clock_gettime(CLOCK_MONOTONIC, &now);
-	    if (some_jk_are_down_or_held() >= 0) {
-		timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
-		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
-		    if (last_input_was_special_combination) {
-			send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
-		    } else {
+        if (value == 1) {
+            mod_map[i].state = 1;
+            clock_gettime(CLOCK_MONOTONIC, &mod_map[i].last_time_down);
+            last_input_was_special_combination = 0;
+        } else if (value == 2) {
+            mod_map[i].state = 1;
+            last_input_was_special_combination = 0;
+        } else {
+            mod_map[i].state = 0;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            if (some_jk_are_down_or_held() >= 0) {
+                timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
+                if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
+                    if (last_input_was_special_combination) {
+                        send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                    } else {
                         printf("foo\n"); //ex: Escape + Enter
-			last_input_was_special_combination = 1;
-			send_down_or_held_jks_secondary_function(uidev, 1); // refactor?
-			send_primary_function(uidev, mod_map[i].key, 1);
-			send_primary_function(uidev, mod_map[i].key, 0);
-			send_down_or_held_jks_secondary_function(uidev, 0);
-		    }
-		} else {
-		    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
-		}
-	    } else {
-		timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
-		if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
-		    if (last_input_was_special_combination) {
-			send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
-		    } else {
-			send_primary_function(uidev, mod_map[i].key, 1);
-			send_primary_function(uidev, mod_map[i].key, 0);
-			last_input_was_special_combination = 0;
-		    }
-		} else {
-		    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
-		}
-	    }
-	}
+                        last_input_was_special_combination = 1;
+                        send_down_or_held_jks_secondary_function(uidev, 1); // refactor?
+                        send_primary_function(uidev, mod_map[i].key, 1);
+                        send_primary_function(uidev, mod_map[i].key, 0);
+                        send_down_or_held_jks_secondary_function(uidev, 0);
+                    }
+                } else {
+                    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                }
+            } else {
+                timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
+                if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
+                    if (last_input_was_special_combination) {
+                        send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                    } else {
+                        send_primary_function(uidev, mod_map[i].key, 1);
+                        send_primary_function(uidev, mod_map[i].key, 0);
+                        last_input_was_special_combination = 0;
+                    }
+                } else {
+                    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                }
+            }
+        }
     } else {
-	if (value == 1) {
-	    if (some_jk_are_down_or_held() >= 0) {
-		last_input_was_special_combination = 1;
-		send_down_or_held_jks_secondary_function(uidev, 1);
-		send_primary_function(uidev, code, 1);
-	    } else {
-		last_input_was_special_combination = 0;
-		send_primary_function(uidev, code, 1);
-	    }
-	} else if (value == 2) {
-	    if (some_jk_are_down_or_held() >= 0) {
-		last_input_was_special_combination = 1;
-		send_down_or_held_jks_secondary_function(uidev, 1);
-		send_primary_function(uidev, code, 1);
-	    } else {
-		last_input_was_special_combination = 0;
-		send_primary_function(uidev, code, 1);
-	    }
-	} else { // if (value == 0)
+        if (value == 1) {
+            if (some_jk_are_down_or_held() >= 0) {
+                last_input_was_special_combination = 1;
+                send_down_or_held_jks_secondary_function(uidev, 1);
+                send_primary_function(uidev, code, 1);
+            } else {
+                last_input_was_special_combination = 0;
+                send_primary_function(uidev, code, 1);
+            }
+        } else if (value == 2) {
+            if (some_jk_are_down_or_held() >= 0) {
+                last_input_was_special_combination = 1;
+                send_down_or_held_jks_secondary_function(uidev, 1);
+                send_primary_function(uidev, code, 1);
+            } else {
+                last_input_was_special_combination = 0;
+                send_primary_function(uidev, code, 1);
+            }
+        } else { // if (value == 0)
             // if code is in combo... TODO
 
-	    send_primary_function(uidev, code, 0);
-	}
+            send_primary_function(uidev, code, 0);
+        }
     }
 }
 
@@ -231,19 +231,19 @@ static int
 print_event(struct input_event *ev)
 {
     if (ev->type == EV_SYN)
-	printf("Event: time %ld.%06ld, ++++++++++++++++++++ %s +++++++++++++++\n",
-	       ev->input_event_sec,
-	       ev->input_event_usec,
-	       libevdev_event_type_get_name(ev->type));
+        printf("Event: time %ld.%06ld, ++++++++++++++++++++ %s +++++++++++++++\n",
+               ev->input_event_sec,
+               ev->input_event_usec,
+               libevdev_event_type_get_name(ev->type));
     else
-	printf("Event: time %ld.%06ld, type %d (%s), code %d (%s), value %d\n",
-	       ev->input_event_sec,
-	       ev->input_event_usec,
-	       ev->type,
-	       libevdev_event_type_get_name(ev->type),
-	       ev->code,
-	       libevdev_event_code_get_name(ev->type, ev->code),
-	       ev->value);
+        printf("Event: time %ld.%06ld, type %d (%s), code %d (%s), value %d\n",
+               ev->input_event_sec,
+               ev->input_event_usec,
+               ev->type,
+               libevdev_event_type_get_name(ev->type),
+               ev->code,
+               libevdev_event_code_get_name(ev->type, ev->code),
+               ev->value);
     return 0;
 }
 
@@ -273,22 +273,22 @@ main(int argc, char **argv)
     int rc = 1;
 
     if (argc < 2)
-	goto out;
+        goto out;
 
     usleep(100000); // let (KEY_ENTER), value 0 go through before
-		    // grabbing the device
+                    // grabbing the device
 
     file = argv[1];
     fd = open(file, O_RDONLY);
     if (fd < 0) {
-	perror("Failed to open device\n");
-	goto out;
+        perror("Failed to open device\n");
+        goto out;
     }
 
     rc = libevdev_new_from_fd(fd, &dev);
     if (rc < 0) {
-	fprintf(stderr, "Failed to init libevdev (%s)\n", strerror(-rc));
-	goto out;
+        fprintf(stderr, "Failed to init libevdev (%s)\n", strerror(-rc));
+        goto out;
     }
 
     int err;
@@ -297,41 +297,41 @@ main(int argc, char **argv)
 
     uifd = open("/dev/uinput", O_RDWR);
     if (uifd < 0) {
-	printf("uifd < 0 (Do you have the right privileges?)\n");
-	return -errno;
+        printf("uifd < 0 (Do you have the right privileges?)\n");
+        return -errno;
     }
 
     err = libevdev_uinput_create_from_device(dev, uifd, &uidev);
     if (err != 0)
-	return err;
-	
+        return err;
+        
     int grab = libevdev_grab(dev, LIBEVDEV_GRAB);
     if (grab < 0) {
-	printf("grab < 0\n");
-	return -errno;
+        printf("grab < 0\n");
+        return -errno;
     }
 
     do {
-	struct input_event ev;
-	rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &ev);
-	if (rc == LIBEVDEV_READ_STATUS_SYNC) {
-	    printf("::::::::::::::::::::: dropped ::::::::::::::::::::::\n");
-	    while (rc == LIBEVDEV_READ_STATUS_SYNC) {
-		print_sync_event(&ev);
-		rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev);
-	    }
-	    printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
-	} else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
+        struct input_event ev;
+        rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &ev);
+        if (rc == LIBEVDEV_READ_STATUS_SYNC) {
+            printf("::::::::::::::::::::: dropped ::::::::::::::::::::::\n");
+            while (rc == LIBEVDEV_READ_STATUS_SYNC) {
+                print_sync_event(&ev);
+                rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev);
+            }
+            printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
+        } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
             //printf("received: \n");
             //print_event(&ev);
-	    if (ev.type == EV_KEY) {
-		handle_ev_key(uidev, ev.code, ev.value);
-	    }
-	}
+            if (ev.type == EV_KEY) {
+                handle_ev_key(uidev, ev.code, ev.value);
+            }
+        }
     } while (rc == LIBEVDEV_READ_STATUS_SYNC || rc == LIBEVDEV_READ_STATUS_SUCCESS || rc == -EAGAIN);
     
     if (rc != LIBEVDEV_READ_STATUS_SUCCESS && rc != -EAGAIN)
-	fprintf(stderr, "Failed to handle events: %s\n", strerror(-rc));
+        fprintf(stderr, "Failed to handle events: %s\n", strerror(-rc));
     
     rc = 0;
 out:
