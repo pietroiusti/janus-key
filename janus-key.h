@@ -1,10 +1,26 @@
 #include "libevdev/libevdev-uinput.h"
 #include <time.h>
 
+// Modified key: key to which a primary and/or a secondary function
+// has been assigned. (Those keys to which a secondary function has
+// been assigned are called `janus keys`.)
 typedef struct {
     unsigned int key;
     unsigned int primary_function;
     unsigned int secondary_function;
     unsigned int state;
     struct timespec last_time_down;
-} janus_key;
+} mod_key;
+
+// Output of a combination of keys.
+typedef struct {
+    unsigned int key1;
+    unsigned int key2;
+} output;
+
+// Combination of keys.
+typedef struct {
+    unsigned int key1;
+    unsigned int key2;
+    output combo;
+} combo;
