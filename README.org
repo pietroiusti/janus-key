@@ -24,7 +24,7 @@ Configuration is simple.
 Install *libevdev* on your system if you have not already.
 
 * Configuration
-Edit the janus_map in config.h
+Edit the mod_map in config.h
 
 For example, the following simply turns ESC into CAPSLOCK:
 #+begin_src C
