@@ -1,6 +1,6 @@
 #include "./janus-key.h"
 
-janus_key janus_map[] = {
+mod_key mod_map[] = {
     // key                1st function     2nd function
     {  KEY_CAPSLOCK,      KEY_ESC,         KEY_LEFTALT     }, // Change both CAPS' primary and secondary function
     {  KEY_ENTER,         0,               KEY_RIGHTALT    }, // Do not change ENTER's primary function
