@@ -154,7 +154,6 @@ static void send_primary_function(const struct libevdev_uinput *uidev, unsigned 
 static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code, int value) {
     int i = is_janus(code);
     if (i >= 0) {
-        //printf("is_janus\n");
         if (value == 1) {
             mod_map[i].state = 1;
             clock_gettime(CLOCK_MONOTONIC, &mod_map[i].last_time_down);
@@ -171,9 +170,8 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
                     if (last_input_was_special_combination) {
                         send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
                     } else {
-                        printf("foo\n"); //ex: Escape + Enter
                         last_input_was_special_combination = 1;
-                        send_down_or_held_jks_secondary_function(uidev, 1); // refactor?
+                        send_down_or_held_jks_secondary_function(uidev, 1);
                         send_primary_function(uidev, mod_map[i].key, 1);
                         send_primary_function(uidev, mod_map[i].key, 0);
                         send_down_or_held_jks_secondary_function(uidev, 0);
@@ -216,8 +214,6 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
                 send_primary_function(uidev, code, 1);
             }
         } else { // if (value == 0)
-            // if code is in combo... TODO
-
             send_primary_function(uidev, code, 0);
         }
     }
@@ -280,7 +276,6 @@ main(int argc, char **argv)
         goto out;
 
     usleep(100000); // let (KEY_ENTER), value 0 go through before
-                    // grabbing the device
 
     file = argv[1];
     fd = open(file, O_RDONLY);
@@ -326,8 +321,6 @@ main(int argc, char **argv)
             }
             printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
         } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-            //printf("received: \n");
-            //print_event(&ev);
             if (ev.type == EV_KEY) {
                 handle_ev_key(uidev, ev.code, ev.value);
             }
