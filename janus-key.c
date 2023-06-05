@@ -139,7 +139,7 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
     }
 }
 
-// Post throught uidev, with value `value, the primary function
+// Post through uidev, with value `value, the primary function
 // associated of `code`.
 static void send_primary_function(const struct libevdev_uinput *uidev, unsigned int code, int value) {
     int i = is_in_mod_map(code);
