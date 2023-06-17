@@ -164,8 +164,8 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
         } else {
             mod_map[i].state = 0;
             clock_gettime(CLOCK_MONOTONIC, &now);
+            timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
             if (some_jk_are_down_or_held() >= 0) {
-                timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
                 if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
                     if (last_input_was_special_combination) {
                         send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
@@ -180,7 +180,6 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
                     send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
                 }
             } else {
-                timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
                 if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
                     if (last_input_was_special_combination) {
                         send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
