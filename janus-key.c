@@ -165,32 +165,21 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
             mod_map[i].state = 0;
             clock_gettime(CLOCK_MONOTONIC, &now);
             timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
-            if (some_jk_are_down_or_held() >= 0) {
-                if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
-                    if (last_input_was_special_combination) {
-                        send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
-                    } else {
+            if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
+                if (last_input_was_special_combination) {
+                    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                } else {
+                    if (some_jk_are_down_or_held() >= 0) {
                         last_input_was_special_combination = 1;
                         send_down_or_held_jks_secondary_function(uidev, 1);
-                        send_primary_function(uidev, mod_map[i].key, 1);
-                        send_primary_function(uidev, mod_map[i].key, 0);
+                    } else {
                         send_down_or_held_jks_secondary_function(uidev, 0);
                     }
-                } else {
-                    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                    send_primary_function(uidev, mod_map[i].key, 1);
+                    send_primary_function(uidev, mod_map[i].key, 0);
                 }
             } else {
-                if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
-                    if (last_input_was_special_combination) {
-                        send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
-                    } else {
-                        send_primary_function(uidev, mod_map[i].key, 1);
-                        send_primary_function(uidev, mod_map[i].key, 0);
-                        last_input_was_special_combination = 0;
-                    }
-                } else {
-                    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
-                }
+                send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
             }
         }
     } else {
