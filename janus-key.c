@@ -152,22 +152,23 @@ static void send_primary_function(const struct libevdev_uinput *uidev, unsigned 
 }
 
 static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code, int value) {
-    int i = is_janus(code);
-    if (i >= 0) {
+    int jk_index = is_janus(code);
+    if (jk_index >= 0) {
+        mod_key *jk = &mod_map[jk_index];
         if (value == 1) {
-            mod_map[i].state = 1;
-            clock_gettime(CLOCK_MONOTONIC, &mod_map[i].last_time_down);
+            jk->state = 1;
+            clock_gettime(CLOCK_MONOTONIC, &jk->last_time_down);
             last_input_was_special_combination = 0;
         } else if (value == 2) {
-            mod_map[i].state = 1;
+            jk->state = 1;
             last_input_was_special_combination = 0;
         } else {
-            mod_map[i].state = 0;
+            jk->state = 0;
             clock_gettime(CLOCK_MONOTONIC, &now);
-            timespec_add(&mod_map[i].last_time_down, &tp_max_delay, &tp_sum);
-            if (timespec_cmp(&now, &tp_sum) == 1) { // if now - mod_map[i].last_time_down < max_delay
+            timespec_add(&jk->last_time_down, &tp_max_delay, &tp_sum);
+            if (timespec_cmp(&now, &tp_sum) == 1) { // if now - jk->last_time_down < max_delay
                 if (last_input_was_special_combination) {
-                    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                    send_key_ev_and_sync(uidev, jk->secondary_function, 0);
                 } else {
                     if (some_jk_are_down_or_held() >= 0) {
                         last_input_was_special_combination = 1;
@@ -175,11 +176,11 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
                     } else {
                         send_down_or_held_jks_secondary_function(uidev, 0);
                     }
-                    send_primary_function(uidev, mod_map[i].key, 1);
-                    send_primary_function(uidev, mod_map[i].key, 0);
+                    send_primary_function(uidev, jk->key, 1);
+                    send_primary_function(uidev, jk->key, 0);
                 }
             } else {
-                send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 0);
+                send_key_ev_and_sync(uidev, jk->secondary_function, 0);
             }
         }
     } else {
