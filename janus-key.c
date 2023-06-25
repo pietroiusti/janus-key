@@ -208,48 +208,6 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
     }
 }
 
-/*
-********************************************************************************
-BEGIN functions from libevdev-1.11.0/tools/libevdev-events.c
-********************************************************************************
-SPDX-License-Identifier: MIT
-Copyright © 2013 Red Hat, Inc.
-*/
-
-static int
-print_event(struct input_event *ev)
-{
-    if (ev->type == EV_SYN)
-        printf("Event: time %ld.%06ld, ++++++++++++++++++++ %s +++++++++++++++\n",
-               ev->input_event_sec,
-               ev->input_event_usec,
-               libevdev_event_type_get_name(ev->type));
-    else
-        printf("Event: time %ld.%06ld, type %d (%s), code %d (%s), value %d\n",
-               ev->input_event_sec,
-               ev->input_event_usec,
-               ev->type,
-               libevdev_event_type_get_name(ev->type),
-               ev->code,
-               libevdev_event_code_get_name(ev->type, ev->code),
-               ev->value);
-    return 0;
-}
-
-static int
-print_sync_event(struct input_event *ev)
-{
-    printf("SYNC: ");
-    print_event(ev);
-    return 0;
-}
-
-/* 
-********************************************************************************
-END functions from libevdev-1.11.0/tools/libevdev-events.c
-********************************************************************************
-*/
-
 int
 main(int argc, char **argv)
 {
@@ -303,12 +261,11 @@ main(int argc, char **argv)
         struct input_event ev;
         rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &ev);
         if (rc == LIBEVDEV_READ_STATUS_SYNC) {
-            printf("::::::::::::::::::::: dropped ::::::::::::::::::::::\n");
+            printf("janus_key: dropped\n");
             while (rc == LIBEVDEV_READ_STATUS_SYNC) {
-                print_sync_event(&ev);
                 rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev);
             }
-            printf("::::::::::::::::::::: re-synced ::::::::::::::::::::::\n");
+            printf("janus_key: re-synced\n");
         } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
             if (ev.type == EV_KEY) {
                 handle_ev_key(uidev, ev.code, ev.value);
