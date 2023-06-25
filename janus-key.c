@@ -2,7 +2,7 @@
   
     janus-key. Give keys a double function.
 
-    Copyright (C) 2021, 2022  Giulio Pietroiusti
+    Copyright (C) 2021, 2022, 2023  Giulio Pietroiusti
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
