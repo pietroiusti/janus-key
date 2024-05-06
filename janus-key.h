@@ -9,5 +9,7 @@ typedef struct {
     unsigned int primary_function;
     unsigned int secondary_function;
     unsigned int state;
+    unsigned int delayed_down;//whether delayed remapping should happen
+    struct timespec send_down_at;//time at which delayed remapping should happen
     struct timespec last_time_down;
 } mod_key;
