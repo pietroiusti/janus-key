@@ -161,7 +161,6 @@ static void ms_to_timespec(long ms, struct timespec *ts) {
 static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned int code, int value)
 {
     int err;
-
     err = libevdev_uinput_write_event(uidev, EV_KEY, code, value);
     if (err != 0) {
         perror("Error in writing EV_KEY event\n");
@@ -172,19 +171,19 @@ static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned i
         perror("Error in writing EV_SYN, SYN_REPORT, 0.\n");
         exit(err);
     }
-
     printf("Sending %u %u\n", code, value);
 }
 
 // For each janus key down or held send an EV_KEY event with its
 // secondary function code and value `value`.
 static void send_down_or_held_jks_secondary_function(const struct libevdev_uinput *uidev, int value) {
-    for (int j = 0; j < sizeof(mod_map)/sizeof(mod_map[0]); j++) {
-        if (mod_map[j].state == 1 || mod_map[j].state == 2 && mod_map[j].secondary_function > 0)  {
-            // ###########################################
-            mod_map[j].delayed_down = 0;
-            // ###########################################
-            send_key_ev_and_sync(uidev, mod_map[j].secondary_function, value);
+    for (int i = 0; i < sizeof(mod_map)/sizeof(mod_map[0]); i++) {
+        if ((mod_map[i].state == 1 || mod_map[i].state == 2) && mod_map[i].secondary_function > 0)  {
+            mod_map[i].delayed_down = 0;
+            if (mod_map[i].last_secondary_function_value_sent != value) {
+                send_key_ev_and_sync(uidev, mod_map[i].secondary_function, value);
+            } else printf("refraining from sending %d %d\n", mod_map[i].secondary_function, value);
+            mod_map[i].last_secondary_function_value_sent = value;
         }
     }
 }
@@ -215,19 +214,19 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
 
             // calculate time in which the delayed down event should happen (if relevant conditions are fulfilled)
             struct timespec scheduled_delayed_down;
-            printf("&jk->last_time_down.tv-sec: %lu\n", jk->last_time_down.tv_sec);
-            printf("&jk->last_time_down.tv-nsec: %lu\n", jk->last_time_down.tv_nsec);
+            /* printf("&jk->last_time_down.tv-sec: %lu\n", jk->last_time_down.tv_sec); */
+            /* printf("&jk->last_time_down.tv-nsec: %lu\n", jk->last_time_down.tv_nsec); */
             timespec_add(&jk->last_time_down, &delay_timespec, &scheduled_delayed_down);
-            printf("scheduled_delayed_down.tv_sec: %lu\n", scheduled_delayed_down.tv_sec);
-            printf("scheduled_delayed_down.tv_nsec: %lu\n", scheduled_delayed_down.tv_nsec);
+            /* printf("scheduled_delayed_down.tv_sec: %lu\n", scheduled_delayed_down.tv_sec); */
+            /* printf("scheduled_delayed_down.tv_nsec: %lu\n", scheduled_delayed_down.tv_nsec); */
 
             jk->send_down_at = scheduled_delayed_down;
-            printf("jk->send_down_at.tv_sec: %lu\n", jk->send_down_at.tv_sec);
-            printf("jk->send_down_at.tv_nsec: %lu\n", jk->send_down_at.tv_nsec);
+            /* printf("jk->send_down_at.tv_sec: %lu\n", jk->send_down_at.tv_sec); */
+            /* printf("jk->send_down_at.tv_nsec: %lu\n", jk->send_down_at.tv_nsec); */
             jk->delayed_down = 1;
             // ###########################################
         } else if (value == 2) {
-            jk->state = 1;
+            jk->state = 2;
             last_input_was_special_combination = 0;
         } else {
             // ###########################################
@@ -238,7 +237,10 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
             timespec_add(&jk->last_time_down, &tp_max_delay, &tp_sum);
             if (timespec_cmp(&now, &tp_sum) == 1) { // is considered as tap
                 if (last_input_was_special_combination) {
-                    send_key_ev_and_sync(uidev, jk->secondary_function, 0);
+                    if (jk->last_secondary_function_value_sent != 0) {
+                        send_key_ev_and_sync(uidev, jk->secondary_function, 0);
+                    } else printf("refraining from sending %d %d\n", jk->secondary_function, 0);
+                    jk->last_secondary_function_value_sent = 0;
                 } else {
                     if (some_jk_are_down_or_held() >= 0) {
                         last_input_was_special_combination = 1;
@@ -250,7 +252,10 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
                     send_primary_function(uidev, jk->key, 0);
                 }
             } else { // is not considered as tap
-                send_key_ev_and_sync(uidev, jk->secondary_function, 0);
+                if (jk->last_secondary_function_value_sent != 0) {
+                    send_key_ev_and_sync(uidev, jk->secondary_function, 0);
+                } else printf("refraining from sending %d %d\n", jk->secondary_function, 0);
+                jk->last_secondary_function_value_sent = 0;
             }
         }
     } else {
@@ -267,10 +272,10 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
             if (some_jk_are_down_or_held() >= 0) {
                 last_input_was_special_combination = 1;
                 send_down_or_held_jks_secondary_function(uidev, 1);
-                send_primary_function(uidev, code, 1);
+                send_primary_function(uidev, code, 2);
             } else {
                 last_input_was_special_combination = 0;
-                send_primary_function(uidev, code, 1);
+                send_primary_function(uidev, code, 2);
             }
         } else { // if (value == 0)
             send_primary_function(uidev, code, 0);
@@ -281,9 +286,9 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
 int main(int argc, char **argv)
 {
     ms_to_timespec(max_delay, &delay_timespec);
-    printf("delay_timespec.tv_sec: %lu\n", delay_timespec.tv_sec);
-    printf("delay_timespec.tv_nsec: %lu\n", delay_timespec.tv_nsec);
-    printf("In in ms: %lu\n", timespec_to_ms(&delay_timespec));
+    /* printf("delay_timespec.tv_sec: %lu\n", delay_timespec.tv_sec); */
+    /* printf("delay_timespec.tv_nsec: %lu\n", delay_timespec.tv_nsec); */
+    /* printf("In in ms: %lu\n", timespec_to_ms(&delay_timespec)); */
 
     tp_max_delay.tv_sec = 0;
     tp_max_delay.tv_nsec = max_delay * 1000000;
@@ -351,7 +356,7 @@ int main(int argc, char **argv)
         }
 
         if (pending_events) {
-            printf("SOME EVENT PENDING\n");
+            /* printf("SOME EVENT PENDING\n"); */
             got_event = 1;
 
             // read next event begin ################################
@@ -364,7 +369,7 @@ int main(int argc, char **argv)
                 printf("janus_key: re-synced\n");
             }
         } else {
-            printf("NO EVENT PENDING\n");
+            /* printf("NO EVENT PENDING\n"); */
             // find that mod_key whose `delayed_down` is true and has the
             // soonest `send_down_at`, if any (there might not be a mod_key that
             // satisfies those conditions)
@@ -379,23 +384,23 @@ int main(int argc, char **argv)
             // calculate timeout
             clock_gettime(CLOCK_MONOTONIC, &now);
 
-            printf("soonest_index: %d\n", soonest_index);
-            printf("soonest_val.tv_sec: %lu\n", soonest_val.tv_sec);
-            printf("soonest_val.tv_nsec: %lu\n", soonest_val.tv_nsec);
-            printf("now.tv_sec %lu\n", now.tv_sec);
-            printf("now.tv_nsec %lu\n", now.tv_nsec);
-            printf("mod_map[soonest_index].send_down_at.tv_sec %lu\n", mod_map[soonest_index].send_down_at.tv_sec);
-            printf("mod_map[soonest_index].send_down_at.tv_nsec %lu\n", mod_map[soonest_index].send_down_at.tv_nsec);
-            printf("compare: %d\n", timespec_cmp(&now, &(mod_map[soonest_index].send_down_at)));
+            /* printf("soonest_index: %d\n", soonest_index); */
+            /* printf("soonest_val.tv_sec: %lu\n", soonest_val.tv_sec); */
+            /* printf("soonest_val.tv_nsec: %lu\n", soonest_val.tv_nsec); */
+            /* printf("now.tv_sec %lu\n", now.tv_sec); */
+            /* printf("now.tv_nsec %lu\n", now.tv_nsec); */
+            /* printf("mod_map[soonest_index].send_down_at.tv_sec %lu\n", mod_map[soonest_index].send_down_at.tv_sec); */
+            /* printf("mod_map[soonest_index].send_down_at.tv_nsec %lu\n", mod_map[soonest_index].send_down_at.tv_nsec); */
+            /* printf("compare: %d\n", timespec_cmp(&now, &(mod_map[soonest_index].send_down_at))); */
             timespec_subtract(&now, &(mod_map[soonest_index].send_down_at), &timeout);
             long timeout_ms = soonest_index == -1
                               ? 5000000 // default timeout (right?)
                               : timespec_to_ms(&timeout);
-            printf("timeout in ms: %lu\n", timespec_to_ms(&timeout));
-            printf("BEFORE BLOCKING\n");
+            /* printf("timeout in ms: %lu\n", timespec_to_ms(&timeout)); */
+            /* printf("BEFORE BLOCKING\n"); */
             int cond = soonest_index == -1 || timespec_cmp(&now, &mod_map[soonest_index].send_down_at) == 1;
             if (cond && poll(&my_fd, 1, timeout_ms)) {
-                printf("POLL RETURNED TRUE. WE HAVE AN EVENT.\n");
+                /* printf("POLL RETURNED TRUE. WE HAVE AN EVENT.\n"); */
                 // we didn't time out, so we can read an event
                 //printf("WE DIDN'T TIME OUT, SO WE CAN READ AN EVENT\n");
                 // read next event begin ################################
@@ -410,7 +415,7 @@ int main(int argc, char **argv)
             }
         }
 
-        printf("GOING TO HANDLE TIMEOUTS\n");
+        /* printf("GOING TO HANDLE TIMEOUTS\n"); */
 
         // handle timers
         for (size_t i = 0; i < sizeof(mod_map)/sizeof(mod_map[0]); i++) {
@@ -423,24 +428,27 @@ int main(int argc, char **argv)
             //   - now is not less than send_down_at
             //   - delayed_down is true
             //   - now - send_down_at is <= 0
-            printf("now.tv_sec: %lu\n", now.tv_sec);
-            printf("now.tv_nsec: %lu\n", now.tv_nsec);
-            printf("mod_map[i].send_down_at.tv_sec: %lu\n", mod_map[i].send_down_at.tv_sec);
-            printf("mod_map[i].send_down_at.tv_nsec: %lu\n", mod_map[i].send_down_at.tv_nsec);
+            /* printf("now.tv_sec: %lu\n", now.tv_sec); */
+            /* printf("now.tv_nsec: %lu\n", now.tv_nsec); */
+            /* printf("mod_map[i].send_down_at.tv_sec: %lu\n", mod_map[i].send_down_at.tv_sec); */
+            /* printf("mod_map[i].send_down_at.tv_nsec: %lu\n", mod_map[i].send_down_at.tv_nsec); */
 
             timespec_subtract(&now, &(mod_map[i].send_down_at), &timeout);
             /* int ms = timespec_to_ms(&timeout); */
-            printf("is timeout %lu passed?: %s\n", i, timespec_cmp(&now, &(mod_map[i].send_down_at)) != 1 ? "yes" : "no");
-            printf("should timeout %lu be taken into consideration?: %s\n", i, mod_map[i].delayed_down == 1 ? "yes" : "no");
+            /* printf("is timeout %lu passed?: %s\n", i, timespec_cmp(&now, &(mod_map[i].send_down_at)) != 1 ? "yes" : "no"); */
+            /* printf("should timeout %lu be taken into consideration?: %s\n", i, mod_map[i].delayed_down == 1 ? "yes" : "no"); */
             /* printf("are ms less than or equal to 0?: %d\n", ms <= 0); */
             /* printf("ms: %d\n", ms); */
 
             int send_delay_down =  mod_map[i].delayed_down && timespec_cmp(&now, &(mod_map[i].send_down_at)) != 1 /*&& ms <= 0*/;
             if (send_delay_down) {
-                printf("SENDING A DELAYED DOWN EVENT!!!\n");
-                printf("i: %lu\n", i);
-                printf("mod_map[i].delayed_down: %d\n", mod_map[i].delayed_down);
-                send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 1);
+                /* printf("SENDING A DELAYED DOWN EVENT!!!\n"); */
+                /* printf("i: %lu\n", i); */
+                /* printf("mod_map[i].delayed_down: %d\n", mod_map[i].delayed_down); */
+                if (mod_map[i].last_secondary_function_value_sent != 1) {
+                    send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 1);
+                } else printf("refraining from sending %d %d\n", mod_map[i].secondary_function, 1);
+                mod_map[i].last_secondary_function_value_sent = 1;
                 //printf("SETTING RELEVANT MOD_KEY FLAG TO 0!!!\n");
                 mod_map[i].delayed_down = 0;
             }
@@ -448,7 +456,7 @@ int main(int argc, char **argv)
 
         // handle new event if we have one
         if (got_event && rc == LIBEVDEV_READ_STATUS_SUCCESS && our_magical_event.type == EV_KEY) {
-            printf("HANDLING %d, %d!\n", our_magical_event.code, our_magical_event.value);
+            /* printf("HANDLING %d, %d!\n", our_magical_event.code, our_magical_event.value); */
             handle_ev_key(uidev, our_magical_event.code, our_magical_event.value);
         }
 
