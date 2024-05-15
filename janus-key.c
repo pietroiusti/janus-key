@@ -263,20 +263,18 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
             if (some_jk_are_down_or_held() >= 0) {
                 last_input_was_special_combination = 1;
                 send_down_or_held_jks_secondary_function(uidev, 1);
-                send_primary_function(uidev, code, 1);
             } else {
                 last_input_was_special_combination = 0;
-                send_primary_function(uidev, code, 1);
             }
+            send_primary_function(uidev, code, 1);
         } else if (value == 2) {
             if (some_jk_are_down_or_held() >= 0) {
                 last_input_was_special_combination = 1;
                 send_down_or_held_jks_secondary_function(uidev, 1);
-                send_primary_function(uidev, code, 2);
             } else {
                 last_input_was_special_combination = 0;
-                send_primary_function(uidev, code, 2);
             }
+            send_primary_function(uidev, code, 2);
         } else { // if (value == 0)
             send_primary_function(uidev, code, 0);
         }
