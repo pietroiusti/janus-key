@@ -392,7 +392,7 @@ int main(int argc, char **argv)
             /* printf("compare: %d\n", timespec_cmp(&now, &(mod_map[soonest_index].send_down_at))); */
             timespec_subtract(&now, &(mod_map[soonest_index].send_down_at), &timeout);
             long timeout_ms = soonest_index == -1
-                              ? 5000000 // default timeout (right?)
+                              ? -1 // block until an event occurs
                               : timespec_to_ms(&timeout);
             /* printf("timeout in ms: %lu\n", timespec_to_ms(&timeout)); */
             /* printf("BEFORE BLOCKING\n"); */
