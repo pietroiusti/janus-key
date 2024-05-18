@@ -40,13 +40,12 @@
 #include "libevdev/libevdev-uinput.h"
 #include "poll.h"
 
+#define COUNTOF(x) (sizeof(x)/sizeof(*(x)))
+
 // max delay set by user stored as a timespec struct
 struct timespec delay_timespec;
 
 int last_input_was_special_combination = 0;
-
-// store delay value given by user into timespec struct
-// struct timespec tp_max_delay;
 
 // For calculating delay
 struct timespec now;
@@ -55,8 +54,7 @@ struct timespec tp_sum;
 // If any of the janus keys is down or held return the index of the
 // first one of them in the mod_map. Otherwise, return -1.
 static int some_jk_are_down_or_held() {
-    size_t length = sizeof(mod_map)/sizeof(mod_map[0]);
-    for (int i = 0; i < length; i++) {
+    for (size_t i = 0; i < COUNTOF(mod_map); i++) {
         if (mod_map[i].state == 1 || mod_map[i].state == 2 && mod_map[i].secondary_function > 0)
             return i;
     }
@@ -66,8 +64,7 @@ static int some_jk_are_down_or_held() {
 // If `key` is in the mod_map, then return its index. Otherwise return
 // -1.
 static int is_in_mod_map(unsigned int key) {
-    size_t length = sizeof(mod_map)/sizeof(mod_map[0]);
-    for (int i = 0; i < length; i++) {
+    for (size_t i = 0; i < COUNTOF(mod_map); i++) {
         if (mod_map[i].key == key)
             return i;
     }
@@ -157,7 +154,7 @@ static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned i
 // For each janus key down or held send an EV_KEY event with its
 // secondary function code and value `value`.
 static void send_down_or_held_jks_secondary_function(const struct libevdev_uinput *uidev, int value) {
-    for (int i = 0; i < sizeof(mod_map)/sizeof(mod_map[0]); i++) {
+    for (size_t i = 0; i < COUNTOF(mod_map); i++) {
         if ((mod_map[i].state == 1 || mod_map[i].state == 2) && mod_map[i].secondary_function > 0)  {
             mod_map[i].delayed_down = 0;
             if (mod_map[i].last_secondary_function_value_sent != value) {
@@ -249,26 +246,15 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
     }
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     ms_to_timespec(max_delay, &delay_timespec);
-
-    // I'm commenting the following. We alreayd have a timespec for
-    // that, don't we?
-    //
-    /* tp_max_delay.tv_sec = 0; */
-    /* tp_max_delay.tv_nsec = max_delay * 1000000; */
-
     struct libevdev *dev = NULL;
     const char *file;
     int read_fd;
     int rc = 1;
-
     if (argc < 2)
         goto out;
-
-    usleep(100000); // let (KEY_ENTER), value 0 go through before
-
+    usleep(100000); // let (KEY_ENTER), value 0 go through
     file = argv[1];
     read_fd = open(file, O_RDONLY);
     if (read_fd < 0) {
@@ -276,14 +262,12 @@ int main(int argc, char **argv)
         goto out;
     }
 
-    // variables to manage timeout-------
+    // variables to manage timeout
     struct input_event our_magical_event;
     unsigned got_event = 0; // if true then we have got an event, otherwise we have timed out
-
     struct pollfd poll_fd;
     poll_fd.fd = read_fd;
     poll_fd.events = POLLIN;
-    // ----------------------------------
 
     rc = libevdev_new_from_fd(read_fd, &dev);
     if (rc < 0) {
@@ -337,7 +321,7 @@ int main(int argc, char **argv)
             // satisfies those conditions)
             int soonest_index = -1;
             struct timespec soonest_val = {.tv_sec = 0, .tv_nsec = 0};
-            for (size_t i = 1; i < sizeof(mod_map)/sizeof(mod_map[0]); i++) {
+            for (size_t i = 1; i < COUNTOF(mod_map); i++) {
                 if (mod_map[i].delayed_down && timespec_cmp(&mod_map[i].send_down_at, &soonest_val) == 1) {
                     soonest_val = mod_map[i].send_down_at;
                     soonest_index = i;
@@ -364,7 +348,7 @@ int main(int argc, char **argv)
         }
 
         // handle timers
-        for (size_t i = 0; i < sizeof(mod_map)/sizeof(mod_map[0]); i++) {
+        for (size_t i = 0; i < COUNTOF(mod_map); i++) {
             clock_gettime(CLOCK_MONOTONIC, &now);
             timespec_subtract(&now, &(mod_map[i].send_down_at), &timeout);
             int send_delay_down =  mod_map[i].delayed_down && timespec_cmp(&now, &(mod_map[i].send_down_at)) != 1 /*&& ms <= 0*/;
