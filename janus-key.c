@@ -309,9 +309,9 @@ int main(int argc, char **argv) {
         if (has_pending_events == 1) {
             got_event = 1;
             rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &our_magical_event);
-            if (rc == LIBEVDEV_READ_STATUS_SYNC/*|| our_magical_event.type != EV_KEY*/ ) {
+            if (rc == LIBEVDEV_READ_STATUS_SYNC) {
                 printf("janus_key: dropped\n");
-                while (rc == LIBEVDEV_READ_STATUS_SYNC /*|| our_magical_event.type != EV_KEY*/) {
+                while (rc == LIBEVDEV_READ_STATUS_SYNC) {
                     rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &our_magical_event);
                 }
                 printf("janus_key: re-synced\n");
@@ -345,9 +345,9 @@ int main(int argc, char **argv) {
             if (should_poll && poll(&poll_fd, 1, poll_timeout)) {
                 got_event = 1;
                 rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &our_magical_event);
-                if (rc == LIBEVDEV_READ_STATUS_SYNC /*|| our_magical_event.type == EV_KEY*/) {
+                if (rc == LIBEVDEV_READ_STATUS_SYNC) {
                     printf("janus_key: dropped (after poll returned true)\n");
-                    while (rc == LIBEVDEV_READ_STATUS_SYNC /*|| our_magical_event.type == EV_KEY*/) {
+                    while (rc == LIBEVDEV_READ_STATUS_SYNC) {
                         rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &our_magical_event);
                     }
                     printf("janus_key: re-synced (after poll returned true)\n");
@@ -359,7 +359,7 @@ int main(int argc, char **argv) {
         for (size_t i = 0; i < COUNTOF(mod_map); i++) {
             clock_gettime(CLOCK_MONOTONIC, &now);
             timespec_subtract(&now, &(mod_map[i].send_down_at), &timeout);
-            int send_delay_down =  mod_map[i].delayed_down && timespec_cmp(&now, &(mod_map[i].send_down_at)) != 1 /*&& ms <= 0*/;
+            int send_delay_down =  mod_map[i].delayed_down && timespec_cmp(&now, &(mod_map[i].send_down_at)) != 1;
             if (send_delay_down) {
                 if (mod_map[i].last_secondary_function_value_sent != 1) {
                     send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 1);
