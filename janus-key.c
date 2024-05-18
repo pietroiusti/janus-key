@@ -151,7 +151,7 @@ static void send_key_ev_and_sync(const struct libevdev_uinput *uidev, unsigned i
         perror("Error in writing EV_SYN, SYN_REPORT, 0.\n");
         exit(err);
     }
-    printf("Sending %u %u\n", code, value);
+    //printf("Sending %u %u\n", code, value);
 }
 
 // For each janus key down or held send an EV_KEY event with its
