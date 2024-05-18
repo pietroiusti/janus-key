@@ -328,16 +328,21 @@ int main(int argc, char **argv) {
                     soonest_index = i;
                 }
             }
-            // calculate timeout
-            // TODO: handle case of soonest timer being in the past
-            // TODO: fix: we are accessing memory out of bound
-            clock_gettime(CLOCK_MONOTONIC, &now);
-            timespec_subtract(&now, &(mod_map[soonest_index].send_down_at), &timeout);
-            long poll_timeout = soonest_index == -1
-                              ? -1 // block until an event occurs
-                              : timespec_to_ms(&timeout);
-            int cond = soonest_index == -1 || timespec_cmp(&now, &mod_map[soonest_index].send_down_at) == 1;
-            if (cond && poll(&poll_fd, 1, poll_timeout)) {
+
+            // decide whether to poll and calculate timeout
+            long poll_timeout = -1;
+            int should_poll = 0;
+            if (soonest_index == -1) {
+                // we should poll until a new event (second arg to poll will be -1)
+                should_poll = 1;
+            } else {
+                clock_gettime(CLOCK_MONOTONIC, &now);
+                if (timespec_cmp(&now, &(mod_map[soonest_index].send_down_at)) == 1) {
+                    should_poll = 1;
+                    timespec_subtract(&now, &(mod_map[soonest_index].send_down_at), &timeout);
+                }
+            }
+            if (should_poll && poll(&poll_fd, 1, poll_timeout)) {
                 got_event = 1;
                 rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &our_magical_event);
                 if (rc == LIBEVDEV_READ_STATUS_SYNC /*|| our_magical_event.type == EV_KEY*/) {
@@ -376,7 +381,7 @@ int main(int argc, char **argv) {
     if (rc != LIBEVDEV_READ_STATUS_SUCCESS && rc != -EAGAIN)
         fprintf(stderr, "Failed to handle events: %s\n", strerror(-rc));
 
-    // no need to use libevdev_free to free memory if the program is
-    // shutting down.
+    // No need to use free memory (e.g., using libevdev_free) if the
+    // program is shutting down.
     return 0;
 }
