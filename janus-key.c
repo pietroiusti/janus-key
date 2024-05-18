@@ -261,7 +261,7 @@ int main(int argc, char **argv)
 
     struct libevdev *dev = NULL;
     const char *file;
-    int fd;
+    int read_fd;
     int rc = 1;
 
     if (argc < 2)
@@ -270,8 +270,8 @@ int main(int argc, char **argv)
     usleep(100000); // let (KEY_ENTER), value 0 go through before
 
     file = argv[1];
-    fd = open(file, O_RDONLY);
-    if (fd < 0) {
+    read_fd = open(file, O_RDONLY);
+    if (read_fd < 0) {
         perror("Failed to open device\n");
         goto out;
     }
@@ -280,28 +280,28 @@ int main(int argc, char **argv)
     struct input_event our_magical_event;
     unsigned got_event = 0; // if true then we have got an event, otherwise we have timed out
 
-    struct pollfd my_fd;
-    my_fd.fd = fd;
-    my_fd.events = POLLIN;
+    struct pollfd poll_fd;
+    poll_fd.fd = read_fd;
+    poll_fd.events = POLLIN;
     // ----------------------------------
 
-    rc = libevdev_new_from_fd(fd, &dev);
+    rc = libevdev_new_from_fd(read_fd, &dev);
     if (rc < 0) {
         fprintf(stderr, "Failed to init libevdev (%s)\n", strerror(-rc));
         goto out;
     }
 
     int err;
-    int uifd;
+    int write_fd;
     struct libevdev_uinput *uidev;
 
-    uifd = open("/dev/uinput", O_RDWR);
-    if (uifd < 0) {
+    write_fd = open("/dev/uinput", O_RDWR);
+    if (write_fd < 0) {
         printf("uifd < 0 (Do you have the right privileges?)\n");
         return -errno;
     }
 
-    err = libevdev_uinput_create_from_device(dev, uifd, &uidev);
+    err = libevdev_uinput_create_from_device(dev, write_fd, &uidev);
     if (err != 0)
         return err;
 
@@ -350,7 +350,7 @@ int main(int argc, char **argv)
                               ? -1 // block until an event occurs
                               : timespec_to_ms(&timeout);
             int cond = soonest_index == -1 || timespec_cmp(&now, &mod_map[soonest_index].send_down_at) == 1;
-            if (cond && poll(&my_fd, 1, poll_timeout)) {
+            if (cond && poll(&poll_fd, 1, poll_timeout)) {
                 got_event = 1;
                 rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &our_magical_event);
                 if (rc == LIBEVDEV_READ_STATUS_SYNC /*|| our_magical_event.type == EV_KEY*/) {
