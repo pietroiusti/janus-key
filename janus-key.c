@@ -104,11 +104,6 @@ static int timespec_cmp(struct timespec *tp1, struct timespec *tp2) {
 
 // Add two timespec structs.
 static void timespec_add(struct timespec* a, struct timespec* b, struct timespec* c) {
-    if (a == NULL || b == NULL || c == NULL) {
-        fprintf(stderr, "Invalid pointer in timespec_add\n");
-        return;
-    }
-
     c->tv_sec = a->tv_sec + b->tv_sec;
     c->tv_nsec = a->tv_nsec + b->tv_nsec;
     if (c->tv_nsec >= 1000000000) { // overflow
@@ -120,11 +115,6 @@ static void timespec_add(struct timespec* a, struct timespec* b, struct timespec
 // Subtracts timespec b from timespec a and stores the result in timespec c.
 // Assumes a >= b.
 static void timespec_subtract(const struct timespec* a, const struct timespec* b, struct timespec* c) {
-    if (a == NULL || b == NULL || c == NULL) {
-        fprintf(stderr, "Invalid pointer in timespec_subtract\n");
-        return;
-    }
-
     c->tv_sec = a->tv_sec - b->tv_sec;
     c->tv_nsec = a->tv_nsec - b->tv_nsec;
     if (c->tv_nsec < 0) { // Underflow
@@ -135,22 +125,12 @@ static void timespec_subtract(const struct timespec* a, const struct timespec* b
 
 // Converts a timespec struct to milliseconds.
 static long timespec_to_ms(const struct timespec *ts) {
-    if (ts == NULL) {
-        fprintf(stderr, "Invalid pointer in timespec_to_ms\n");
-        return 0; // Consider appropriate error handling or a different return value.
-    }
-
     long milliseconds = ts->tv_sec * 1000 + ts->tv_nsec / 1000000;
     return milliseconds;
 }
 
 // Converts milliseconds to a timespec struct.
 static void ms_to_timespec(long ms, struct timespec *ts) {
-    if (ts == NULL) {
-        fprintf(stderr, "Invalid pointer in ms_to_timespec\n");
-        return;
-    }
-
     ts->tv_sec = ms / 1000; // Convert milliseconds to seconds
     ts->tv_nsec = (ms % 1000) * 1000000; // Convert the remainder to nanoseconds
 }
