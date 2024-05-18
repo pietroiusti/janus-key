@@ -252,14 +252,15 @@ int main(int argc, char **argv) {
     const char *file;
     int read_fd;
     int rc = 1;
-    if (argc < 2)
-        goto out;
+    if (argc < 2) {
+        exit(1);
+    }
     usleep(100000); // let (KEY_ENTER), value 0 go through
     file = argv[1];
     read_fd = open(file, O_RDONLY);
     if (read_fd < 0) {
         perror("Failed to open device\n");
-        goto out;
+        exit(1);
     }
 
     // variables to manage timeout
@@ -272,7 +273,7 @@ int main(int argc, char **argv) {
     rc = libevdev_new_from_fd(read_fd, &dev);
     if (rc < 0) {
         fprintf(stderr, "Failed to init libevdev (%s)\n", strerror(-rc));
-        goto out;
+        exit(1);
     }
 
     int err;
@@ -295,7 +296,7 @@ int main(int argc, char **argv) {
         return -errno;
     }
 
-    do {
+    while (rc == LIBEVDEV_READ_STATUS_SYNC || rc == LIBEVDEV_READ_STATUS_SUCCESS || rc == -EAGAIN) {
         int has_pending_events = libevdev_has_event_pending(dev);
         got_event = 0;
         struct timespec timeout;
@@ -370,14 +371,12 @@ int main(int argc, char **argv) {
             }
         }
 
-    } while (rc == LIBEVDEV_READ_STATUS_SYNC || rc == LIBEVDEV_READ_STATUS_SUCCESS || rc == -EAGAIN);
+    }
 
     if (rc != LIBEVDEV_READ_STATUS_SUCCESS && rc != -EAGAIN)
         fprintf(stderr, "Failed to handle events: %s\n", strerror(-rc));
 
-    rc = 0;
-out:
-    libevdev_free(dev);
-
-    return rc;
+    // no need to use libevdev_free to free memory if the program is
+    // shutting down.
+    return 0;
 }
