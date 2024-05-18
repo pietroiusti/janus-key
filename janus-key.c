@@ -328,6 +328,8 @@ int main(int argc, char **argv) {
                 }
             }
             // calculate timeout
+            // TODO: handle case of soonest timer being in the past
+            // TODO: fix: we are accessing memory out of bound
             clock_gettime(CLOCK_MONOTONIC, &now);
             timespec_subtract(&now, &(mod_map[soonest_index].send_down_at), &timeout);
             long poll_timeout = soonest_index == -1
