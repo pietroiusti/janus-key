@@ -312,16 +312,16 @@ int main(int argc, char **argv)
     }
 
     do {
-        int pending_events = libevdev_has_event_pending(dev);
+        int has_pending_events = libevdev_has_event_pending(dev);
         got_event = 0;
         struct timespec timeout;
 
-        if (pending_events < 0) {
+        if (has_pending_events < 0) {
             perror("pending");
             exit(1);
         }
 
-        if (pending_events) {
+        if (has_pending_events == 1) {
             got_event = 1;
             rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &our_magical_event);
             if (rc == LIBEVDEV_READ_STATUS_SYNC/*|| our_magical_event.type != EV_KEY*/ ) {
