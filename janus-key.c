@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
     }
 
     // variables to manage timeout
-    struct input_event our_magical_event;
+    struct input_event event;
     unsigned got_event = 0; // if true then we have got an event, otherwise we have timed out
     struct pollfd poll_fd;
     poll_fd.fd = read_fd;
@@ -308,11 +308,11 @@ int main(int argc, char **argv) {
 
         if (has_pending_events == 1) {
             got_event = 1;
-            rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &our_magical_event);
+            rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &event);
             if (rc == LIBEVDEV_READ_STATUS_SYNC) {
                 printf("janus_key: dropped\n");
                 while (rc == LIBEVDEV_READ_STATUS_SYNC) {
-                    rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &our_magical_event);
+                    rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &event);
                 }
                 printf("janus_key: re-synced\n");
             }
@@ -344,11 +344,11 @@ int main(int argc, char **argv) {
             }
             if (should_poll && poll(&poll_fd, 1, poll_timeout)) {
                 got_event = 1;
-                rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &our_magical_event);
+                rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL|LIBEVDEV_READ_FLAG_BLOCKING, &event);
                 if (rc == LIBEVDEV_READ_STATUS_SYNC) {
                     printf("janus_key: dropped (after poll returned true)\n");
                     while (rc == LIBEVDEV_READ_STATUS_SYNC) {
-                        rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &our_magical_event);
+                        rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &event);
                     }
                     printf("janus_key: re-synced (after poll returned true)\n");
                 }
@@ -371,8 +371,8 @@ int main(int argc, char **argv) {
 
         // handle new event if we have one
         if (got_event && rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-            if (our_magical_event.type == EV_KEY) {
-                handle_ev_key(uidev, our_magical_event.code, our_magical_event.value);
+            if (event.type == EV_KEY) {
+                handle_ev_key(uidev, event.code, event.value);
             }
         }
 
