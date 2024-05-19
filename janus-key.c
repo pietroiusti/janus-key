@@ -159,7 +159,7 @@ static void send_down_or_held_jks_secondary_function(const struct libevdev_uinpu
             mod_map[i].delayed_down = 0;
             if (mod_map[i].last_secondary_function_value_sent != value) {
                 send_key_ev_and_sync(uidev, mod_map[i].secondary_function, value);
-            } else printf("refraining from sending %d %d\n", mod_map[i].secondary_function, value);
+            }
             mod_map[i].last_secondary_function_value_sent = value;
         }
     }
@@ -204,7 +204,7 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
                 if (last_input_was_special_combination) {
                     if (jk->last_secondary_function_value_sent != 0) {
                         send_key_ev_and_sync(uidev, jk->secondary_function, 0);
-                    } else printf("refraining from sending %d %d\n", jk->secondary_function, 0);
+                    }
                     jk->last_secondary_function_value_sent = 0;
                 } else {
                     if (some_jk_are_down_or_held() >= 0) {
@@ -219,7 +219,7 @@ static void handle_ev_key(const struct libevdev_uinput *uidev, unsigned int code
             } else { // is not considered as tap
                 if (jk->last_secondary_function_value_sent != 0) {
                     send_key_ev_and_sync(uidev, jk->secondary_function, 0);
-                } else printf("refraining from sending %d %d\n", jk->secondary_function, 0);
+                }
                 jk->last_secondary_function_value_sent = 0;
             }
         }
@@ -363,7 +363,7 @@ int main(int argc, char **argv) {
             if (send_delay_down) {
                 if (mod_map[i].last_secondary_function_value_sent != 1) {
                     send_key_ev_and_sync(uidev, mod_map[i].secondary_function, 1);
-                } else printf("refraining from sending %d %d\n", mod_map[i].secondary_function, 1);
+                }
                 mod_map[i].last_secondary_function_value_sent = 1;
                 mod_map[i].delayed_down = 0;
             }
